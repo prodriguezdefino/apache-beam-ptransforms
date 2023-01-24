@@ -35,7 +35,7 @@ public class ThriftCompression {
   }
 
   @VisibleForTesting
-  public static byte[] compressBatchRecords(Envelope envelope, int compressionLevel) throws TException {
+  public static byte[] compressEnvelope(Envelope envelope, int compressionLevel) throws TException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     TTransport transport = new TIOStreamTransport(baos);
     transport = new TZlibTransport(transport, compressionLevel);
@@ -47,7 +47,7 @@ public class ThriftCompression {
   }
 
   @VisibleForTesting
-  public static Envelope decompressBatchRecords(byte[] data) throws TException {
+  public static Envelope decompressEnvelope(byte[] data) throws TException {
     TMemoryInputTransport tMemoryInputTransport = new TMemoryInputTransport();
     TTransport transport = new TZlibTransport(tMemoryInputTransport);
     TProtocol protocol = new TBinaryProtocol.Factory().getProtocol(transport);
