@@ -64,7 +64,7 @@ public class ReadStreamingSource
   public PCollection<PubsubMessage> expand(PBegin input) {
     StreamingSourceOptions options
             = input.getPipeline().getOptions().as(StreamingSourceOptions.class);
-    PCollection msgs = null;
+    PCollection<PubsubMessage> msgs = null;
     switch (options.getSourceType()) {
       case PUBSUBLITE: {
         SubscriptionPath subscriptionPath = SubscriptionPath.parse(options.getSubscription().get());

@@ -149,7 +149,7 @@ public abstract class MetricsHandler
     @StartBundle
     public void startBundle(PipelineOptions options) {
       this.projectName = options.as(DataflowWorkerHarnessOptions.class).getProject();
-      HashMap metricLabels = Maps.newHashMap();
+      Map<String, String> metricLabels = Maps.newHashMap();
       metricLabels.put("transform", "CaptureMetrics");
       metricLabels.put("job_id", options.as(DataflowWorkerHarnessOptions.class).getJobId());
       this.metrics.put(
@@ -438,13 +438,13 @@ public abstract class MetricsHandler
 
     @Override
     public PDone expand(PCollection<List<Long>> input) {
-      input.apply("NOOP", (PTransform) ParDo.of((DoFn) new DoFn<List<Long>, Void>() {
+      input.apply("NOOP", ParDo.of(new DoFn<List<Long>, Void>() {
 
-        @DoFn.ProcessElement
-        public void process(DoFn.ProcessContext context) {
+        @ProcessElement
+        public void process(ProcessContext context) {
         }
       }));
-      return PDone.in((Pipeline) input.getPipeline());
+      return PDone.in(input.getPipeline());
     }
   }
 
