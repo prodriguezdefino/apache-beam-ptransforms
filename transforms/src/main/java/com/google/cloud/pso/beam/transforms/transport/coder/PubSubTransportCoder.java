@@ -13,10 +13,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.beam.common.transport.coders;
+package com.google.cloud.pso.beam.transforms.transport.coder;
 
 import com.google.cloud.pso.beam.common.transport.EventTransport;
-import com.google.cloud.pso.beam.common.transport.PubSubTransport;
+import com.google.cloud.pso.beam.transforms.transport.PubSubTransport;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.io.InputStream;

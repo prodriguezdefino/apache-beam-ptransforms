@@ -50,8 +50,8 @@
       <scope>runtime</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-sdks-java-core</artifactId>
+      <groupId>com.google.cloud.pso.beam</groupId>
+      <artifactId>common</artifactId>
     </dependency>
   </dependencies>
 </project>

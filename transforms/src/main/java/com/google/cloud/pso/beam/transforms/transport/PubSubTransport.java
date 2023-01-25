@@ -13,15 +13,19 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.beam.common.transport;
+package com.google.cloud.pso.beam.transforms.transport;
 
+import com.google.cloud.pso.beam.common.transport.EventTransport;
+import com.google.cloud.pso.beam.transforms.transport.coder.PubSubTransportCoder;
 import com.google.common.collect.Maps;
 import java.util.Map;
+import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.transforms.SerializableBiFunction;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.joda.time.Instant;
 
+@DefaultCoder(PubSubTransportCoder.class)
 public class PubSubTransport
         implements EventTransport {
 

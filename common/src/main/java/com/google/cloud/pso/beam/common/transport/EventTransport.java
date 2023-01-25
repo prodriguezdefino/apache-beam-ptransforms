@@ -22,12 +22,13 @@ import java.util.Optional;
 
 /**
  * A transport interface that should cover the needed methods to move data between sources and
- * syncs.
+ * sinks.
  *
  */
 public interface EventTransport extends Serializable {
 
-  public static final String EVENT_TIME_PROPERTY_NAME = "eventTimestamp";
+  static final String EVENT_TIME_PROPERTY_NAME = "eventTimestamp";
+  static final String SCHEMA_ATTRIBUTE_KEY = "SCHEMA_ATTRIBUTE";
 
   String getId();
 
@@ -35,6 +36,14 @@ public interface EventTransport extends Serializable {
 
   byte[] getData();
 
+  /**
+   * In case the headers of this event transport contains a key named "eventTimestamp" with a value
+   * representing a ISO timestamp, this method will return an Optional containing the millis from
+   * epoch represented in that ISO timestamp; if the attribute key is not present the Optional is
+   * empty.
+   *
+   * @return Optional with potentially a value of millis since epoch
+   */
   default Optional<Long> getEventEpochInMillis() {
     return Optional
             .ofNullable(this.getHeaders().get(EVENT_TIME_PROPERTY_NAME))

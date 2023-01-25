@@ -7,12 +7,41 @@ import java.util.Base64;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import org.apache.commons.compress.utils.IOUtils;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Util functions for compression and uncompression.
  */
 public class CompressionUtils {
+
+  private static final Logger LOG = LoggerFactory.getLogger(CompressionUtils.class);
+
+  /**
+   * Supported compression types.
+   */
+  public enum CompressionType {
+    NO_COMPRESSION,
+    THRIFT_ZLIB,
+    AVRO_SNAPPY;
+
+    public static boolean shouldDecompress(String headerValue) {
+      try {
+        switch (CompressionType.valueOf(headerValue)) {
+          case AVRO_SNAPPY:
+          case THRIFT_ZLIB:
+            return true;
+          default:
+            return false;
+        }
+      } catch (IllegalArgumentException ex) {
+        LOG.debug("Wrong compression header found " + headerValue, ex);
+        return false;
+      }
+    }
+  }
+
+  public static final String COMPRESSION_TYPE_HEADER_KEY = "COMPRESSION_TYPE";
 
   public static String compressString(String srcTxt)
           throws IOException {

@@ -15,24 +15,24 @@
  */
 package com.google.cloud.pso.beam.udf;
 
-import java.util.Optional;
-import org.apache.beam.sdk.values.Row;
-import org.joda.time.DateTime;
+import com.google.cloud.pso.beam.common.transport.CommonTransport;
+import com.google.cloud.pso.beam.common.transport.EventTransport;
+import java.time.Instant;
+import java.util.HashMap;
 
 /**
- * A custom UDF that decides on a positive sentiment based on the page score. 
+ * A custom UDF that decides on a positive sentiment based on the page score.
  */
 public class CustomUDF implements UDF {
 
   @Override
-  public Row apply(Row row) throws RuntimeException {
-    
-    return Row.fromRow(row)
-            .withFieldValue("sentiment", 
-                    Optional.of(row.getInt32("page_score"))
-                            .map(score -> score > 5 ? "positive" : "negative").get())
-            .withFieldValue("processing_time", DateTime.now())
-            .build();
+  public EventTransport apply(EventTransport event) throws RuntimeException {
+
+    var newAttributes = new HashMap<String, String>(event.getHeaders());
+    // we can add the execution time 
+    newAttributes.put("udfExecTimestamp", Instant.now().toString());
+
+    return new CommonTransport(event.getId(), newAttributes, event.getData());
   }
 
 }

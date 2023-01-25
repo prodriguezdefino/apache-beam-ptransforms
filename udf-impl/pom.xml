@@ -52,6 +52,10 @@
     </dependency>
     <dependency>
       <groupId>com.google.cloud.pso.beam</groupId>
+      <artifactId>common</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.pso.beam</groupId>
       <artifactId>udf</artifactId>
     </dependency>
   </dependencies>
