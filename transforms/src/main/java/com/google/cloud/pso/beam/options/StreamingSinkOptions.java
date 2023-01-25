@@ -17,12 +17,13 @@ package com.google.cloud.pso.beam.options;
 
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
 /**
  * Describes the options in use to write a streaming sink.
  */
-public interface StreamingSinkOptions {
+public interface StreamingSinkOptions extends PipelineOptions {
 
   @Description("Output topic")
   @Validation.Required
