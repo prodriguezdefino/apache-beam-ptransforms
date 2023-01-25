@@ -9,7 +9,7 @@
     <version>0.0.1-SNAPSHOT</version>
   </parent>
   
-  <groupId>com.google.cloud.pso</groupId>
+  <groupId>com.google.cloud.pso.beam</groupId>
   <artifactId>transforms</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <name>Apache Beam PTransforms :: PTransforms</name>

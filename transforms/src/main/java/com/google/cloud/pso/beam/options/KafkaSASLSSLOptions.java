@@ -67,7 +67,7 @@ public interface KafkaSASLSSLOptions
       if (!options.as(KafkaOptions.class).isKafkaSASLSSLEnabled()) {
         throw new IllegalArgumentException("Set kafka secure access on true.");
       }
-      KafkaSASLSSLOptions opts = options.as(KafkaSASLSSLOptions.class);
+      var opts = options.as(KafkaSASLSSLOptions.class);
       return new SASLSSLConfig(
               opts.getSecretManagerKeyTabId().get(),
               opts.getSecretManagerTrustStoreId().get(),

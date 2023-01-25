@@ -67,7 +67,7 @@ public class ReadStreamingSource
     PCollection<PubsubMessage> msgs = null;
     switch (options.getSourceType()) {
       case PUBSUBLITE: {
-        SubscriptionPath subscriptionPath = SubscriptionPath.parse(options.getSubscription().get());
+        var subscriptionPath = SubscriptionPath.parse(options.getSubscription().get());
         SerializableFunction<SequencedMessage, PubsubMessage> msgMapper
                 = sqMsg -> {
                   PubSubMessage msg = sqMsg.getMessage();
@@ -132,8 +132,8 @@ public class ReadStreamingSource
   }
 
   KafkaIO.Read<byte[], byte[]> createKafkaSource(PipelineOptions options) {
-    String sourceTopic = options.as(StreamingSourceOptions.class).getInputTopic().get();
-    KafkaOptions kafkaOptions = options.as(KafkaOptions.class);
+    var sourceTopic = options.as(StreamingSourceOptions.class).getInputTopic().get();
+    var kafkaOptions = options.as(KafkaOptions.class);
 
     KafkaIO.Read<byte[], byte[]> source = KafkaIO
             .readBytes()

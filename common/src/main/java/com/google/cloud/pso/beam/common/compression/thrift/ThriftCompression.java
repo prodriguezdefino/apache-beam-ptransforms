@@ -9,10 +9,8 @@ import com.google.cloud.pso.beam.envelope.Element;
 import com.google.cloud.pso.beam.envelope.Envelope;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.apache.thrift.transport.TMemoryInputTransport;
-import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TZlibTransport;
 
 /**
@@ -21,14 +19,14 @@ import org.apache.thrift.transport.TZlibTransport;
 public class ThriftCompression {
 
   public static Element constructElement(byte[] data, Map<String, String> headers) {
-    Element element = new Element();
+    var element = new Element();
     element.setHeaders(headers);
     element.setData(ByteBuffer.wrap(data));
     return element;
   }
 
   public static Envelope constructEnvelope(List<Element> element, Map<String, String> headers) {
-    Envelope envelope = new Envelope();
+    var envelope = new Envelope();
     envelope.setHeaders(headers);
     envelope.setElements(element);
     return envelope;
@@ -36,10 +34,9 @@ public class ThriftCompression {
 
   @VisibleForTesting
   public static byte[] compressEnvelope(Envelope envelope, int compressionLevel) throws TException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    TTransport transport = new TIOStreamTransport(baos);
-    transport = new TZlibTransport(transport, compressionLevel);
-    TProtocol protocol = new TBinaryProtocol.Factory().getProtocol(transport);
+    var baos = new ByteArrayOutputStream();
+    var transport = new TZlibTransport(new TIOStreamTransport(baos), compressionLevel);
+    var protocol = new TBinaryProtocol.Factory().getProtocol(transport);
     baos.reset();
     envelope.write(protocol);
     transport.flush();
@@ -48,11 +45,11 @@ public class ThriftCompression {
 
   @VisibleForTesting
   public static Envelope decompressEnvelope(byte[] data) throws TException {
-    TMemoryInputTransport tMemoryInputTransport = new TMemoryInputTransport();
-    TTransport transport = new TZlibTransport(tMemoryInputTransport);
-    TProtocol protocol = new TBinaryProtocol.Factory().getProtocol(transport);
+    var tMemoryInputTransport = new TMemoryInputTransport();
+    var transport = new TZlibTransport(tMemoryInputTransport);
+    var protocol = new TBinaryProtocol.Factory().getProtocol(transport);
     tMemoryInputTransport.reset(data, 0, data.length);
-    Envelope records = new Envelope();
+    var records = new Envelope();
     records.read(protocol);
     tMemoryInputTransport.clear();
     protocol.reset();

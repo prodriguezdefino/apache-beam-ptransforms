@@ -38,7 +38,7 @@ public class JVMInitializer
     LOG.info("Call beforeProcessing().");
     if (options.as(KafkaOptions.class).isKafkaSASLSSLEnabled()) {
       LOG.info("setting kafka kerberos auth properties...");
-      String krbFileLocation = options.as(KafkaOptions.class).getKeysRootFolder() + "/krb5.conf";
+      var krbFileLocation = options.as(KafkaOptions.class).getKeysRootFolder() + "/krb5.conf";
       KafkaAuth.setupKerberosConfigFile(krbFileLocation);
       System.setProperty("sun.net.spi.nameservice.provider.1", "dns,sun");
       System.setProperty("java.security.krb5.conf", krbFileLocation);

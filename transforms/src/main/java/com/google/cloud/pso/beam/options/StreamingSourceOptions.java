@@ -21,6 +21,9 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
 
+/**
+ * Describes the options in use to read from a streaming source.
+ */
 public interface StreamingSourceOptions
         extends PipelineOptions {
 
@@ -52,6 +55,5 @@ public interface StreamingSourceOptions
     PUBSUB,
     PUBSUBLITE,
     KAFKA;
-
   }
 }

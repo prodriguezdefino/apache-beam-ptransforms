@@ -28,7 +28,6 @@ import com.google.monitoring.v3.TimeSeries;
 import com.google.monitoring.v3.TypedValue;
 import com.google.protobuf.util.Timestamps;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -149,7 +148,7 @@ public abstract class MetricsHandler
     @StartBundle
     public void startBundle(PipelineOptions options) {
       this.projectName = options.as(DataflowWorkerHarnessOptions.class).getProject();
-      Map<String, String> metricLabels = Maps.newHashMap();
+      var metricLabels = Maps.<String, String>newHashMap();
       metricLabels.put("transform", "CaptureMetrics");
       metricLabels.put("job_id", options.as(DataflowWorkerHarnessOptions.class).getJobId());
       this.metrics.put(
@@ -182,7 +181,7 @@ public abstract class MetricsHandler
                       .setType("custom.googleapis.com/dataflow/" + this.metricName + "_MAX")
                       .putAllLabels(metricLabels)
                       .build());
-      Map<String, String> resourceLabels = Maps.newHashMap();
+      var resourceLabels = Maps.<String, String>newHashMap();
       resourceLabels.put("project_id", this.projectName);
       resourceLabels.put("job_name", options.as(DataflowWorkerHarnessOptions.class).getJobName());
       resourceLabels.put("region", options.as(DataflowWorkerHarnessOptions.class).getRegion());
@@ -334,7 +333,7 @@ public abstract class MetricsHandler
       }
 
       void propagateMetricValues(Long currentTimestamp) {
-        Map<Integer, Double> perc
+        var perc
                 = Quantiles
                         .percentiles()
                         .indexes(new int[]{1, 50, 95, 99, 100})

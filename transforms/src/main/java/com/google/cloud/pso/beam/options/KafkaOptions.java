@@ -92,7 +92,7 @@ public interface KafkaOptions
           implements DefaultValueFactory<KafkaConfig> {
 
     public KafkaConfig create(PipelineOptions options) {
-      KafkaOptions opts = options.as(KafkaOptions.class);
+      var opts = options.as(KafkaOptions.class);
       return new KafkaConfig(
               opts.getConsumerGroupId().get(),
               opts.getPartitionMaxFetchSize(),

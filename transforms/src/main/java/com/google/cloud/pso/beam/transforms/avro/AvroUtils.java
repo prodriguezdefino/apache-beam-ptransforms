@@ -18,13 +18,11 @@ package com.google.cloud.pso.beam.transforms.avro;
 import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.channels.SeekableByteChannel;
-import java.nio.channels.WritableByteChannel;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.CreateOptions;
 import org.apache.parquet.avro.AvroParquetReader;
-import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.io.DelegatingSeekableInputStream;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.SeekableInputStream;
@@ -89,25 +87,26 @@ public class AvroUtils {
 
     LOG.debug("Writing into file {}", destinationPath);
 
-    try (WritableByteChannel writeChannel
+    try ( var writeChannel
             = FileSystems.create(
                     FileSystems.matchNewResource(destinationPath, false),
                     CreateOptions.StandardCreateOptions.builder().setMimeType("").build())) {
       sink.open(writeChannel);
 
-      for (FileIO.ReadableFile readablePart : composeParts) {
+      for (var readablePart : composeParts) {
         LOG.debug("Composing data from {}", readablePart.getMetadata().resourceId());
-        AvroParquetReader.Builder<GenericRecord> readerBuilder
+        var readerBuilder
                 = AvroParquetReader.<GenericRecord>builder(
                         new BeamParquetInputFile(readablePart.openSeekable()));
-        try (ParquetReader<GenericRecord> reader = readerBuilder.build()) {
+        try ( var reader = readerBuilder.build()) {
           GenericRecord read;
           while ((read = reader.read()) != null) {
             sink.write(read);
           }
         } catch (Exception ex) {
           LOG.error("Error while composing files.", ex);
-          LOG.warn("Tried to compose using file {} but failed, skipping.", readablePart.getMetadata().resourceId().getFilename());
+          LOG.warn("Tried to compose using file {} but failed, skipping.",
+                  readablePart.getMetadata().resourceId().getFilename());
         }
       }
       sink.flush();

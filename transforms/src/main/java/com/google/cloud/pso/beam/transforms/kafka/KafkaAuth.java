@@ -16,7 +16,6 @@
 package com.google.cloud.pso.beam.transforms.kafka;
 
 import com.google.cloud.pso.beam.secretmanager.SecretManagerHandler;
-import com.google.cloud.secretmanager.v1.AccessSecretVersionResponse;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -54,20 +53,20 @@ public class KafkaAuth {
   }
 
   public static void setupKeyTabOnWorker(SASLSSLConfig saslSSLConfig) {
-    String location = KafkaAuth.getKeytabLocation(saslSSLConfig);
+    var location = KafkaAuth.getKeytabLocation(saslSSLConfig);
     LOG.debug("writing file with decoded key {} on location {}", saslSSLConfig.keytabId, location);
     KafkaAuth.setupMaterialOnWorker(location, saslSSLConfig.projectId, saslSSLConfig.keytabId);
   }
 
   public static void setupTrustStoreOnWorker(SASLSSLConfig saslSSLConfig) {
-    String location = KafkaAuth.getTruststoreLocation(saslSSLConfig);
+    var location = KafkaAuth.getTruststoreLocation(saslSSLConfig);
     LOG.debug("writing file with decoded key {} on location {}", saslSSLConfig.trutstoreId, location);
     KafkaAuth.setupMaterialOnWorker(location, saslSSLConfig.projectId, saslSSLConfig.trutstoreId);
   }
 
   public static void setupKerberosConfigFile(String location) {
     try {
-      String configContent = Resources.toString(Resources.getResource(
+      var configContent = Resources.toString(Resources.getResource(
               KERBEROS_CONFIG_FILE_TEMPLATE_LOCATION), Charset.defaultCharset());
       LOG.debug("writing keberos config file {} \n on location {}.", configContent, location);
       KafkaAuth.setupFileOnWorkerFS(location, () -> configContent.getBytes());
@@ -91,7 +90,7 @@ public class KafkaAuth {
       }
       Files.write(Paths.get(location), fileContent.get());
     } catch (IOException ex) {
-      String msg = "Exception occurred while trying to write material on disk: " + location;
+      var msg = "Exception occurred while trying to write material on disk: " + location;
       LOG.error(msg, (Throwable) ex);
       throw new RuntimeException(msg, (Throwable) ex);
     }
@@ -104,7 +103,7 @@ public class KafkaAuth {
         Files.createDirectories(materialsDir);
       }
     } catch (IOException ex) {
-      String msg = "Exception occurred while trying to create materials folder: " + path;
+      var msg = "Exception occurred while trying to create materials folder: " + path;
       LOG.error(msg, (Throwable) ex);
       throw new RuntimeException(msg, (Throwable) ex);
     }
@@ -134,7 +133,7 @@ public class KafkaAuth {
   }
 
   private static byte[] retrieveSecretValue(String projectId, String secretId) {
-    AccessSecretVersionResponse response = SecretManagerHandler.getSecretValue(projectId, secretId);
+    var response = SecretManagerHandler.getSecretValue(projectId, secretId);
     return response.getPayload().getData().toByteArray();
   }
 }

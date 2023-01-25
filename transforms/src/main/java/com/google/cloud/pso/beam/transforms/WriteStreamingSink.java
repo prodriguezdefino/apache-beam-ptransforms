@@ -16,6 +16,7 @@
 package com.google.cloud.pso.beam.transforms;
 
 import com.google.cloud.pso.beam.common.transport.EventTransport;
+import com.google.cloud.pso.beam.options.StreamingSinkOptions.SinkType;
 import com.google.cloud.pubsublite.TopicPath;
 import com.google.cloud.pubsublite.proto.AttributeValues;
 import com.google.cloud.pubsublite.proto.PubSubMessage;
@@ -72,9 +73,9 @@ public class WriteStreamingSink
   public PDone expand(PCollection<EventTransport> input) {
     switch (this.sinkType) {
       case KAFKA: {
-        String[] kafkaConfigs = this.outputTopic.split("/");
-        String topic = kafkaConfigs[0];
-        String bootstrapServers = kafkaConfigs[1];
+        var kafkaConfigs = this.outputTopic.split("/");
+        var topic = kafkaConfigs[0];
+        var bootstrapServers = kafkaConfigs[1];
         LOG.info("sending data to topic: {} with bootstrap servers {}", topic, bootstrapServers);
         input
                 .apply("CreateRecords",
@@ -103,7 +104,7 @@ public class WriteStreamingSink
         break;
       }
       case PUBSUBLITE: {
-        TopicPath topicPath = TopicPath.parse(this.outputTopic);
+        var topicPath = TopicPath.parse(this.outputTopic);
         LOG.info("sending data to topic: {}", topicPath.toString());
         input
                 .apply("CreatePubSubLiteMessages",
@@ -125,8 +126,8 @@ public class WriteStreamingSink
 
     @ProcessElement
     public void processElement(ProcessContext context) {
-      EventTransport dataPayload = context.element();
-      PubSubMessage.Builder msgBuilder
+      var dataPayload = context.element();
+      var msgBuilder
               = PubSubMessage
                       .newBuilder()
                       .setData(ByteString.copyFrom(dataPayload.getData()))
@@ -166,7 +167,7 @@ public class WriteStreamingSink
 
     @ProcessElement
     public void processElement(ProcessContext context) {
-      EventTransport dataPayload = context.element();
+      var dataPayload = context.element();
       context.output(
               new ProducerRecord<>(
                       this.topic,
@@ -181,12 +182,5 @@ public class WriteStreamingSink
                                       entry.getValue().getBytes()))
                               .collect(Collectors.toList())));
     }
-  }
-
-  public static enum SinkType {
-    PUBSUB,
-    PUBSUBLITE,
-    KAFKA;
-
   }
 }

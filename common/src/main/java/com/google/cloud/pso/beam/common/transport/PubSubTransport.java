@@ -57,7 +57,7 @@ public class PubSubTransport
   public static SerializableBiFunction<PubsubMessage, Instant, EventTransport>
           createWithTimestamp() {
     return (psMessage, instant) -> {
-      Map<String, String> attributes = Maps.newHashMap(psMessage.getAttributeMap());
+      var attributes = Maps.newHashMap(psMessage.getAttributeMap());
       attributes.put("eventTimestamp", instant.toString());
       return new PubSubTransport(
               new PubsubMessage(psMessage.getPayload(), attributes, psMessage.getMessageId()));

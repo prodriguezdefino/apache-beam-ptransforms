@@ -16,11 +16,11 @@ public class CompressionUtils {
 
   public static String compressString(String srcTxt)
           throws IOException {
-    ByteArrayOutputStream rstBao = new ByteArrayOutputStream();
-    GZIPOutputStream zos = new GZIPOutputStream(rstBao);
+    var rstBao = new ByteArrayOutputStream();
+    var zos = new GZIPOutputStream(rstBao);
     zos.write(srcTxt.getBytes());
     IOUtils.closeQuietly(zos);
-    byte[] bytes = rstBao.toByteArray();
+    var bytes = rstBao.toByteArray();
     return Base64.getEncoder().encodeToString(bytes);
   }
 
@@ -28,7 +28,7 @@ public class CompressionUtils {
           throws IOException {
     String result = null;
 
-    byte[] bytes = Base64.getDecoder().decode(zippedBase64Str);
+    var bytes = Base64.getDecoder().decode(zippedBase64Str);
     GZIPInputStream zi = null;
     try {
       zi = new GZIPInputStream(new ByteArrayInputStream(bytes));

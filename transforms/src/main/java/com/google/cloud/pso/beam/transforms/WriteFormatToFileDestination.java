@@ -22,7 +22,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import java.io.IOException;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.FileIO;
-import org.apache.beam.sdk.io.WriteFilesResult;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -225,7 +224,7 @@ public class WriteFormatToFileDestination<DataT> extends PTransform<PCollection<
     if (createSuccessFile) {
       // create the tuple tags for data to ingest and data signals on windows
       dataOnWindowSignalsTag = CreateSuccessFiles.dataOnWindowSignalTag();
-      TupleTag<DataT> dataToBeIngestedTag = new TupleTag<DataT>() {
+      var dataToBeIngestedTag = new TupleTag<DataT>() {
       };
 
       // capture the data on window signals, having two outputs sinals with data occurring and the data to be ingested
@@ -246,7 +245,7 @@ public class WriteFormatToFileDestination<DataT> extends PTransform<PCollection<
     }
 
     // capture data to be ingested and send it to GCS (as final or temp yet to be determined)
-    WriteFilesResult<Void> writtenFiles
+    var writtenFiles
             = dataToBeWritten
                     .apply(composeSmallFiles ? "WritePreComposeFiles" : "WriteFiles",
                             FileIO.<DataT>write()
@@ -264,7 +263,7 @@ public class WriteFormatToFileDestination<DataT> extends PTransform<PCollection<
 
     if (composeSmallFiles) {
       // we create a compose files transform
-      ComposeFiles<Void, DataT> composeTransform
+      var composeTransform
               = ComposeFiles
                       .<Void, DataT>create()
                       .withFileNaming(naming)
@@ -297,12 +296,12 @@ public class WriteFormatToFileDestination<DataT> extends PTransform<PCollection<
 
       TupleTag<String> processedDataTag = CreateSuccessFiles.processedDataTag();
 
-      PCollectionTuple createSuccessFileInputData
+      var createSuccessFileInputData
               = PCollectionTuple
                       .of(processedDataTag, fileNames)
                       .and(dataOnWindowSignalsTag, dataOnWindowSignals);
 
-      CreateSuccessFiles createSuccessFiles
+      var createSuccessFiles
               = CreateSuccessFiles.create()
                       .withDataOnWindowSignalsTag(dataOnWindowSignalsTag)
                       .withProcessedDataTag(processedDataTag)

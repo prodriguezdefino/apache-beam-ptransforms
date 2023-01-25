@@ -214,7 +214,7 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
 
     @Override
     public int hashCode() {
-      int hash = 5;
+      var hash = 5;
       hash = 11 * hash + Objects.hashCode(this.partFiles);
       return hash;
     }
@@ -230,7 +230,7 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
       if (getClass() != obj.getClass()) {
         return false;
       }
-      final ComposeContext other = (ComposeContext) obj;
+      final var other = (ComposeContext) obj;
       return Objects.equals(this.partFiles, other.partFiles);
     }
 
@@ -291,7 +291,7 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
     public void processElement(ProcessContext context) throws IOException {
       if (cleanParts) {
         LOG.debug("Will delete files: {}", context.element().partFiles);
-        Long startTime = System.currentTimeMillis();
+        var startTime = System.currentTimeMillis();
         FileSystems.delete(
                 // grabs the part file paths
                 context.element().partFiles
@@ -304,7 +304,7 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
 
         LOG.debug("{} part files deleted in {}ms.", context.element().partFiles.size(), System.currentTimeMillis() - startTime);
 
-        Long tmpFileStartTime = System.currentTimeMillis();
+        var tmpFileStartTime = System.currentTimeMillis();
         Optional
                 .ofNullable(context.element().composedTempFile)
                 .map(tmpFile -> {
@@ -346,10 +346,10 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
 
     @ProcessElement
     public void processElement(ProcessContext context, BoundedWindow window, PaneInfo pane) throws IOException {
-      ComposeContext composeCtx = context.element();
+      var composeCtx = context.element();
       LOG.debug("received {} compose file context", composeCtx);
 
-      Long startTime = System.currentTimeMillis();
+      var startTime = System.currentTimeMillis();
 
       String fileDestination = outputPath.get()
               + naming.getFilename(
@@ -359,7 +359,7 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
                       context.element().shard,
                       Compression.UNCOMPRESSED);
 
-      ResourceId tempResource = Optional.ofNullable(composeCtx.composedTempFile)
+      var tempResource = Optional.ofNullable(composeCtx.composedTempFile)
               .map(tmpFile -> {
                 try {
                   return FileSystems.matchSingleFileSpec(tmpFile).resourceId();
@@ -416,12 +416,12 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
             ProcessContext context,
             BoundedWindow window,
             PaneInfo pane) throws IOException {
-      Integer currentKey = context.element().getKey();
+      var currentKey = context.element().getKey();
 
-      String tempFilePartialFileName
+      var tempFilePartialFileName
               = fullTempPath + naming.getFilename(window, pane, totalBundles, currentKey, Compression.UNCOMPRESSED);
 
-      List<FileIO.ReadableFile> composeParts
+      var composeParts
               = StreamSupport
                       .stream(context.element().getValue().spliterator(), false)
                       .collect(Collectors.toList());
@@ -466,9 +466,9 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
 
     @ProcessElement
     public void processElement(ProcessContext context) throws IOException {
-      ComposeContext composeCtx = context.element();
+      var composeCtx = context.element();
 
-      Long startTime = System.currentTimeMillis();
+      var startTime = System.currentTimeMillis();
 
       composeFunction.apply(
               sinkProvider.apply(),

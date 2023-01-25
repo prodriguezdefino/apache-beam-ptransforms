@@ -72,7 +72,7 @@ public class WindowedFileNaming implements FileIO.Write.FileNaming {
 
   @Override
   public String getFilename(BoundedWindow window, PaneInfo pane, int numShards, int shardIndex, Compression compression) {
-    String outputPrefix
+    var outputPrefix
             = Optional
                     .ofNullable(window)
                     .map(w -> w instanceof IntervalWindow ? (IntervalWindow) w : null)
@@ -80,7 +80,7 @@ public class WindowedFileNaming implements FileIO.Write.FileNaming {
                     .map(time -> buildOutputPrefixPath(time))
                     .orElse("");
 
-    StringBuilder fileNameSB = new StringBuilder(outputPrefix);
+    var fileNameSB = new StringBuilder(outputPrefix);
 
     if (!filePrefix.get().isEmpty()) {
       fileNameSB.append(filePrefix.get());

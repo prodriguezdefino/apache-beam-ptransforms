@@ -27,14 +27,14 @@ public class SecretManagerHandler {
   private static final Logger LOG = LoggerFactory.getLogger(SecretManagerHandler.class);
 
   public static AccessSecretVersionResponse getSecretValue(String projectId, String secretId) {
-    String encodedKey = Base64.getEncoder().encodeToString(secretId.getBytes());
+    var encodedKey = Base64.getEncoder().encodeToString(secretId.getBytes());
     try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
       LOG.info("retrieving encoded key secret {} from projectid {}", encodedKey, projectId);
-      SecretVersionName secretVersionName
+      var secretVersionName
               = SecretVersionName.of(projectId, encodedKey, "latest");
       return client.accessSecretVersion(secretVersionName);
     } catch (Exception ex) {
-      String msg = "Error while interacting with SecretManager client, key: " + encodedKey;
+      var msg = "Error while interacting with SecretManager client, key: " + encodedKey;
       LOG.error(msg, ex);
       throw new RuntimeException(msg, ex);
     }

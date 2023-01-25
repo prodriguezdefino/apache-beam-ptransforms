@@ -110,7 +110,7 @@ public class Utilities {
   public static Duration parseDuration(String value) {
     checkNotNull(value, "The specified duration must be a non-null value!");
 
-    PeriodParser parser = new PeriodFormatterBuilder()
+    var parser = new PeriodFormatterBuilder()
             .appendSeconds()
             .appendSuffix("s")
             .appendMinutes()
@@ -119,10 +119,10 @@ public class Utilities {
             .appendSuffix("h")
             .toParser();
 
-    MutablePeriod period = new MutablePeriod();
+    var period = new MutablePeriod();
     parser.parseInto(period, value, 0, Locale.getDefault());
 
-    Duration duration = period.toDurationFrom(new DateTime(0));
+    var duration = period.toDurationFrom(new DateTime(0));
     checkArgument(duration.getMillis() > 0, "The window duration must be greater than 0!");
 
     return duration;
@@ -138,7 +138,7 @@ public class Utilities {
   }
 
   public static TableSchema addNullableTimestampColumnToBQSchema(TableSchema bqSchema, String fieldName) {
-    List<TableFieldSchema> fields = new ArrayList<>(bqSchema.getFields());
+    var fields = new ArrayList<>(bqSchema.getFields());
     fields.add(new TableFieldSchema()
             .setName(fieldName)
             .setType("TIMESTAMP")

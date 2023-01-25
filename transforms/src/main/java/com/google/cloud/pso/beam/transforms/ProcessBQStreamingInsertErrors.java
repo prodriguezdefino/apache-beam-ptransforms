@@ -22,16 +22,13 @@ import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.Field;
-import com.google.cloud.bigquery.FieldList;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.StandardTableDefinition;
-import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.List;
 import org.apache.beam.sdk.coders.AtomicCoder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -48,7 +45,6 @@ import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.slf4j.Logger;
@@ -83,7 +79,7 @@ public class ProcessBQStreamingInsertErrors extends PTransform<PCollection<BigQu
 
   @Override
   public PCollection<BigQueryInsertError> expand(PCollection<BigQueryInsertError> input) {
-    PCollectionTuple channeledErrors = input
+    var channeledErrors = input
             .apply(insertErrorWindowDuration + "Window",
                     Window.<BigQueryInsertError>into(
                             FixedWindows.of(Utilities.parseDuration(insertErrorWindowDuration)))
@@ -132,7 +128,7 @@ public class ProcessBQStreamingInsertErrors extends PTransform<PCollection<BigQu
 
     @ProcessElement
     public void processElement(ProcessContext context) throws IOException {
-      BigQueryInsertError error = context.element();
+      var error = context.element();
       LOG.info("Captured insert error {}",error.getError().toPrettyString());
       error.getError().getErrors().forEach(err -> {
         if (err.getLocation().equals(recoverableMissingFieldName)) {
@@ -193,7 +189,7 @@ public class ProcessBQStreamingInsertErrors extends PTransform<PCollection<BigQu
     @ProcessElement
     public void processElement(ProcessContext context) throws IOException {
       // Create the new field
-      Field newField = Field.of(insertTimestampFieldname, StandardSQLTypeName.TIMESTAMP);
+      var newField = Field.of(insertTimestampFieldname, StandardSQLTypeName.TIMESTAMP);
 
       fixTableSchemaAddingField(context.element().getKey(), newField);
       context.element().getValue().forEach(trow -> {
@@ -204,18 +200,18 @@ public class ProcessBQStreamingInsertErrors extends PTransform<PCollection<BigQu
 
     private void fixTableSchemaAddingField(TableReference tableRef, Field newField) {
       // Get the table, schema and fields from the already-existing table
-      Table table = bigquery.getTable(TableId.of(tableRef.getProjectId(), tableRef.getDatasetId(), tableRef.getTableId()));
-      com.google.cloud.bigquery.Schema schema = table.getDefinition().getSchema();
-      FieldList fields = schema.getFields();
+      var table = bigquery.getTable(TableId.of(tableRef.getProjectId(), tableRef.getDatasetId(), tableRef.getTableId()));
+      var schema = table.getDefinition().getSchema();
+      var fields = schema.getFields();
 
       if (fields.stream().noneMatch(field -> field.getName().equals(insertTimestampFieldname))) {
         // Create a new schema adding the current fields, plus the new one
-        List<Field> field_list = new ArrayList<>();
+        var field_list = new ArrayList<Field>();
         fields.forEach(f -> {
           field_list.add(f);
         });
         field_list.add(newField);
-        com.google.cloud.bigquery.Schema newSchema = com.google.cloud.bigquery.Schema.of(field_list);
+        var newSchema = com.google.cloud.bigquery.Schema.of(field_list);
 
         // Update the table with the new schema
         table.toBuilder().setDefinition(StandardTableDefinition.of(newSchema)).build().update();

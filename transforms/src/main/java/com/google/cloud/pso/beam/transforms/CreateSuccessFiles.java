@@ -24,7 +24,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.nio.channels.WritableByteChannel;
 import java.util.Objects;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.GenerateSequence;
@@ -51,15 +50,15 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.joda.time.DateTime;
 import org.joda.time.Hours;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Creates SUCCESS files based on the data contained in 2 tuples of the PCollectionTuple: data that has been processed on a particular
- * window (processedData) and signals of data found in the same window (dataOnWindowSignals).
+ * Creates SUCCESS files based on the data contained in 2 tuples of the PCollectionTuple: data that
+ * has been processed on a particular window (processedData) and signals of data found in the same
+ * window (dataOnWindowSignals).
  */
 public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
 
@@ -146,7 +145,7 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
       throw new IllegalArgumentException("Writes to GCS expects 2 tuple tags on PCollection (data to ingest and signals on windows).");
     }
 
-    WriteSuccessFileOnEmptyWindow writeOnEmpty = WriteSuccessFileOnEmptyWindow.create()
+    var writeOnEmpty = WriteSuccessFileOnEmptyWindow.create()
             .withOutputDirectory(outputDirectory)
             .withFanoutShards(fanoutShards)
             .withWindowDuration(windowDuration)
@@ -177,8 +176,9 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
   }
 
   /**
-   * Given a String PCollection with the file names contained in a window, will wait for all of them to be completed and create a SUCCESS
-   * file in the containing directory (All files are expected to be contained in the same directory).
+   * Given a String PCollection with the file names contained in a window, will wait for all of them
+   * to be completed and create a SUCCESS file in the containing directory (All files are expected
+   * to be contained in the same directory).
    */
   static class CreateSuccessFileOnPresentData extends PTransform<PCollection<String>, PCollection<Void>> {
 
@@ -235,7 +235,8 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
     }
 
     /**
-     * Combine Strings keeping the latest filename (ordered lexicographically) as the result to be returned.
+     * Combine Strings keeping the latest filename (ordered lexicographically) as the result to be
+     * returned.
      */
     static class CombineFilesNames extends Combine.CombineFn<String, CombineFilesNames.FilenameAcc, String> {
 
@@ -259,7 +260,7 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
 
         @Override
         public int hashCode() {
-          int hash = 7;
+          var hash = 7;
           hash = 41 * hash + Objects.hashCode(this.filename);
           return hash;
         }
@@ -275,7 +276,7 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
           if (getClass() != obj.getClass()) {
             return false;
           }
-          final FilenameAcc other = (FilenameAcc) obj;
+          final var other = (FilenameAcc) obj;
           return Objects.equals(this.filename, other.filename);
         }
 
@@ -298,8 +299,8 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
 
       @Override
       public CombineFilesNames.FilenameAcc mergeAccumulators(Iterable<CombineFilesNames.FilenameAcc> accumulators) {
-        CombineFilesNames.FilenameAcc newAccum = createAccumulator();
-        for (CombineFilesNames.FilenameAcc accum : accumulators) {
+        var newAccum = createAccumulator();
+        for (var accum : accumulators) {
           newAccum.merge(accum);
         }
         return newAccum;
@@ -313,8 +314,8 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
     }
 
     /**
-     * Creates a SUCCESS file on the folder location of the first file in the received iterable (assumes all the files are contained in the
-     * same folder).
+     * Creates a SUCCESS file on the folder location of the first file in the received iterable
+     * (assumes all the files are contained in the same folder).
      */
     static class SuccessFileWriteDoFn extends DoFn<String, Void> {
 
@@ -333,10 +334,10 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
 
       @ProcessElement
       public void processElement(ProcessContext context, BoundedWindow window) throws IOException {
-        String fileName = successFileNamePrefix;
+        var fileName = successFileNamePrefix;
 
         if (flatNamingStructure && window instanceof IntervalWindow) {
-          IntervalWindow intervalWindow = (IntervalWindow) window;
+          var intervalWindow = (IntervalWindow) window;
           fileName = fileName
                   + "_" + buildFlatPathFromDateTime(intervalWindow.start().toDateTime())
                   + "_" + buildFlatPathFromDateTime(intervalWindow.end().toDateTime());
@@ -349,9 +350,9 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
   }
 
   /**
-   * In charge of inspecting each window the pipeline triggers and count the events occurring on it, since the pipeline contains a side
-   * input that periodically generates dummy signals, if in any window only one signal is present the pipeline has not received any data
-   * from its main source.
+   * In charge of inspecting each window the pipeline triggers and count the events occurring on it,
+   * since the pipeline contains a side input that periodically generates dummy signals, if in any
+   * window only one signal is present the pipeline has not received any data from its main source.
    */
   static class WriteSuccessFileOnEmptyWindow extends PTransform<PCollection<Boolean>, PDone> {
 
@@ -411,7 +412,7 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
     @Override
     @SuppressWarnings("deprecation")
     public PDone expand(PCollection<Boolean> input) {
-      Window<Boolean> window
+      var window
               = Window
                       .<Boolean>into(FixedWindows.of(parseDuration(windowDuration)))
                       .withAllowedLateness(parseDuration(windowDuration).dividedBy(4L))
@@ -427,7 +428,7 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
       }
 
       // create a dummy signal on periodic intervals using same window definition
-      PCollection<Boolean> periodicSignals = input.getPipeline()
+      var periodicSignals = input.getPipeline()
               .apply("ImpulseEvery" + windowDuration, seq)
               .apply("CreateDummySignal", MapElements.into(TypeDescriptors.booleans()).via(ts -> true))
               .apply(windowDuration + "Window", window);
@@ -480,12 +481,12 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
 
         // if only the dummy signal has arrived in this window
         if (context.element() == DUMMY_SIGNAL_ONLY_COUNT) {
-          String outputPath = rootFileLocation.isAccessible() ? rootFileLocation.get() : "";
-          String fileName = successFileNamePrefix;
+          var outputPath = rootFileLocation.isAccessible() ? rootFileLocation.get() : "";
+          var fileName = successFileNamePrefix;
 
           if (window instanceof IntervalWindow) {
-            IntervalWindow intervalWindow = (IntervalWindow) window;
-            DateTime time = intervalWindow.maxTimestamp().toDateTime();
+            var intervalWindow = (IntervalWindow) window;
+            var time = intervalWindow.maxTimestamp().toDateTime();
             // check for hourly windows 
             if (Hours.hoursBetween(intervalWindow.start(), intervalWindow.end()).getHours() == 1) {
               outputPath = outputPath + buildHourlyPartitionedPathFromDatetime(time);
@@ -517,7 +518,7 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
             .resolve(fileName, ResolveOptions.StandardResolveOptions.RESOLVE_FILE);
 
     LOG.debug("Will create success file in path {}.", successFile.toString());
-    try ( WritableByteChannel writeChannel = FileSystems.create(successFile, MimeTypes.TEXT)) {
+    try ( var writeChannel = FileSystems.create(successFile, MimeTypes.TEXT)) {
       writeChannel.write(ByteBuffer.wrap(" ".getBytes()));
     } catch (IOException ex) {
       LOG.error("Success file creation failed.", ex);
