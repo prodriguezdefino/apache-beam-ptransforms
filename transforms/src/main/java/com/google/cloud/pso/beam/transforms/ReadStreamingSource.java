@@ -15,28 +15,24 @@
  */
 package com.google.cloud.pso.beam.transforms;
 
+import com.google.cloud.pso.beam.common.transport.CommonTransport;
 import com.google.cloud.pso.beam.common.transport.EventTransport;
+import com.google.cloud.pso.beam.common.transport.coder.CommonTransportCoder;
 import com.google.cloud.pso.beam.transforms.transport.KafkaTransportUtil;
 import com.google.cloud.pso.beam.transforms.transport.PubSubTransport;
 import com.google.cloud.pso.beam.options.KafkaOptions;
 import com.google.cloud.pso.beam.options.StreamingSourceOptions;
 import com.google.cloud.pso.beam.transforms.kafka.ConsumerFactoryFn;
 import com.google.cloud.pso.beam.transforms.transport.PubSubLiteTransportUtil;
+import com.google.cloud.pso.beam.transforms.transport.coder.PubSubTransportCoder;
 import com.google.cloud.pubsublite.SubscriptionPath;
-import com.google.cloud.pubsublite.proto.PubSubMessage;
-import com.google.cloud.pubsublite.proto.SequencedMessage;
-import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsublite.PubsubLiteIO;
 import org.apache.beam.sdk.io.gcp.pubsublite.SubscriberOptions;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.SerializableFunction;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptor;
@@ -68,6 +64,8 @@ public class ReadStreamingSource
     switch (options.getSourceType()) {
       case PUBSUBLITE: {
         var subscriptionPath = SubscriptionPath.parse(options.getSubscription().get());
+        input.getPipeline().getCoderRegistry().registerCoderForClass(
+                CommonTransport.class, CommonTransportCoder.of());
         msgs = input.apply("ReadFromPubSubLite",
                 PubsubLiteIO.read(
                         SubscriberOptions
@@ -81,6 +79,9 @@ public class ReadStreamingSource
         break;
       }
       case PUBSUB: {
+        input.getPipeline().getCoderRegistry().registerCoderForClass(
+                PubSubTransport.class, PubSubTransportCoder.of());
+
         msgs = input.apply("ReadFromPubSub",
                 PubsubIO
                         .readMessagesWithAttributesAndMessageId()
@@ -92,6 +93,8 @@ public class ReadStreamingSource
         break;
       }
       case KAFKA: {
+        input.getPipeline().getCoderRegistry().registerCoderForClass(
+                CommonTransport.class, CommonTransportCoder.of());
         msgs = input
                 .apply("ReadFromKafka", createKafkaSource(options))
                 .apply("ConvertIntoSparrowTransport",
