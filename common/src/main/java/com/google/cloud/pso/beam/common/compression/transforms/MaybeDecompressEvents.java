@@ -19,6 +19,7 @@ import com.google.cloud.pso.beam.common.compression.CompressionUtils;
 import com.google.cloud.pso.beam.common.compression.thrift.ThriftCompression;
 import com.google.cloud.pso.beam.common.transport.CommonTransport;
 import com.google.cloud.pso.beam.common.transport.EventTransport;
+import com.google.cloud.pso.beam.common.transport.coder.CommonTransportCoder;
 import com.google.cloud.pso.beam.envelope.Envelope;
 import com.google.common.collect.Lists;
 import java.util.Optional;
@@ -50,6 +51,8 @@ public class MaybeDecompressEvents
 
   @Override
   public PCollection<EventTransport> expand(PCollection<EventTransport> input) {
+    input.getPipeline().getCoderRegistry().registerCoderForClass(
+            CommonTransport.class, CommonTransportCoder.of());
     return input.apply("CheckHeadersAndDecompressIfPresent", ParDo.of(new CheckForDecompression()));
   }
 

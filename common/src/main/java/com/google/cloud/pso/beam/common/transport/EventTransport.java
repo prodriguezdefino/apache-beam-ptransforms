@@ -15,7 +15,6 @@
  */
 package com.google.cloud.pso.beam.common.transport;
 
-import java.io.Serializable;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
@@ -25,7 +24,7 @@ import java.util.Optional;
  * sinks.
  *
  */
-public interface EventTransport extends Serializable {
+public interface EventTransport {
 
   static final String EVENT_TIME_PROPERTY_NAME = "eventTimestamp";
   static final String SCHEMA_ATTRIBUTE_KEY = "SCHEMA_ATTRIBUTE";
