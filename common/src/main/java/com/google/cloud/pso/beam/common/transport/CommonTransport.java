@@ -50,4 +50,8 @@ public class CommonTransport implements EventTransport {
     return data;
   }
 
+  public static CommonTransport of(EventTransport transport) {
+    return new CommonTransport(transport.getId(), transport.getHeaders(), transport.getData());
+  }
+
 }

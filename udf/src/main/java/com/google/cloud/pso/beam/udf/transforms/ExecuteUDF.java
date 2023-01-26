@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
  * Enables the execution of user defined functions that can transform a single element at a time.
  */
 public class ExecuteUDF
-        extends PTransform<PCollection<EventTransport>, PCollection<EventTransport>> {
+        extends PTransform<PCollection<? extends EventTransport>, PCollection<EventTransport>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ExecuteUDF.class);
 
@@ -45,7 +45,7 @@ public class ExecuteUDF
   }
 
   @Override
-  public PCollection<EventTransport> expand(PCollection<EventTransport> input) {
+  public PCollection<EventTransport> expand(PCollection<? extends EventTransport> input) {
     return input.apply("ExecuteUDF", ParDo.of(new ExecuteUDFDoFn(udfClassName)));
   }
 

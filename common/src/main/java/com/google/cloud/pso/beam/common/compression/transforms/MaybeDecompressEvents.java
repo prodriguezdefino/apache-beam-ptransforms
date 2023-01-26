@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
  * configured compression method.
  */
 public class MaybeDecompressEvents
-        extends PTransform<PCollection<? extends EventTransport>, PCollection<EventTransport>> {
+        extends PTransform<PCollection<? extends EventTransport>, PCollection<? extends EventTransport>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(MaybeDecompressEvents.class);
 
@@ -50,13 +50,14 @@ public class MaybeDecompressEvents
   }
 
   @Override
-  public PCollection<EventTransport> expand(PCollection<? extends EventTransport> input) {
+  public PCollection<? extends EventTransport> expand(PCollection<? extends EventTransport> input) {
     input.getPipeline().getCoderRegistry().registerCoderForClass(
             CommonTransport.class, CommonTransportCoder.of());
-    return input.apply("CheckHeadersAndDecompressIfPresent", ParDo.of(new CheckForDecompression()));
+    return input.apply("CheckHeadersAndDecompressIfPresent", ParDo.of(new CheckForDecompression()))
+            .setCoder(CommonTransportCoder.of());
   }
 
-  static class CheckForDecompression extends DoFn<EventTransport, EventTransport> {
+  static class CheckForDecompression extends DoFn<EventTransport, CommonTransport> {
 
     @ProcessElement
     public void processElement(ProcessContext context) {
@@ -65,7 +66,7 @@ public class MaybeDecompressEvents
               || !CompressionUtils.CompressionType.shouldDecompress(
                       context.element().getHeaders().get(
                               CompressionUtils.COMPRESSION_TYPE_HEADER_KEY))) {
-        context.output(context.element());
+        context.output(CommonTransport.of(context.element()));
       }
       switch (CompressionUtils.CompressionType.valueOf(
               context.element().getHeaders().get(
@@ -93,7 +94,7 @@ public class MaybeDecompressEvents
         }
         default: {
           LOG.warn("we shouldn't have arrived here, lets continue the pipeline :shrugs:");
-          context.output(context.element());
+          context.output(CommonTransport.of(context.element()));
         }
       }
     }

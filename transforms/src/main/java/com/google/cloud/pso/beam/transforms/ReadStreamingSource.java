@@ -64,8 +64,6 @@ public class ReadStreamingSource
     switch (options.getSourceType()) {
       case PUBSUBLITE: {
         var subscriptionPath = SubscriptionPath.parse(options.getSubscription().get());
-        input.getPipeline().getCoderRegistry().registerCoderForClass(
-                CommonTransport.class, CommonTransportCoder.of());
         msgs = input.apply("ReadFromPubSubLite",
                 PubsubLiteIO.read(
                         SubscriberOptions
@@ -80,9 +78,6 @@ public class ReadStreamingSource
         break;
       }
       case PUBSUB: {
-        input.getPipeline().getCoderRegistry().registerCoderForClass(
-                PubSubTransport.class, PubSubTransportCoder.of());
-        
         msgs = input.apply("ReadFromPubSub",
                 PubsubIO
                         .readMessagesWithAttributesAndMessageId()
@@ -95,8 +90,6 @@ public class ReadStreamingSource
         break;
       }
       case KAFKA: {
-        input.getPipeline().getCoderRegistry().registerCoderForClass(
-                CommonTransport.class, CommonTransportCoder.of());
         msgs = input
                 .apply("ReadFromKafka", createKafkaSource(options))
                 .apply("ConvertIntoSparrowTransport",
