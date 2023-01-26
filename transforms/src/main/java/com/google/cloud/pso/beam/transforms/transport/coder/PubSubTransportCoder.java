@@ -15,7 +15,6 @@
  */
 package com.google.cloud.pso.beam.transforms.transport.coder;
 
-import com.google.cloud.pso.beam.common.transport.EventTransport;
 import com.google.cloud.pso.beam.transforms.transport.PubSubTransport;
 import com.google.common.collect.Lists;
 import java.io.IOException;
@@ -24,10 +23,11 @@ import java.io.OutputStream;
 import java.util.List;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
+import org.apache.beam.sdk.coders.CustomCoder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesAndMessageIdCoder;
 
 public class PubSubTransportCoder
-        extends Coder<EventTransport> {
+        extends CustomCoder<PubSubTransport> {
 
   static final PubsubMessageWithAttributesAndMessageIdCoder CODER
           = PubsubMessageWithAttributesAndMessageIdCoder.of();
@@ -37,17 +37,13 @@ public class PubSubTransportCoder
   }
 
   @Override
-  public void encode(EventTransport value, OutputStream outStream)
+  public void encode(PubSubTransport value, OutputStream outStream)
           throws CoderException, IOException {
-    if (!(value instanceof PubSubTransport)) {
-      throw new IllegalArgumentException(
-              "This coder (PubSubTransportCoder) works only with PubSubTransport objects.");
-    }
     CODER.encode(((PubSubTransport) value).getMessage(), outStream);
   }
 
   @Override
-  public EventTransport decode(InputStream inStream) throws CoderException, IOException {
+  public PubSubTransport decode(InputStream inStream) throws CoderException, IOException {
     return new PubSubTransport(CODER.decode(inStream));
   }
 

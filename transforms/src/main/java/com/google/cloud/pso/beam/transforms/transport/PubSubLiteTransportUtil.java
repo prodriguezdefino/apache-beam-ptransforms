@@ -16,7 +16,6 @@
 package com.google.cloud.pso.beam.transforms.transport;
 
 import com.google.cloud.pso.beam.common.transport.CommonTransport;
-import com.google.cloud.pso.beam.common.transport.EventTransport;
 import com.google.cloud.pubsublite.proto.PubSubMessage;
 import com.google.cloud.pubsublite.proto.SequencedMessage;
 import java.util.Map;
@@ -29,7 +28,7 @@ import org.apache.beam.sdk.values.KV;
  */
 public class PubSubLiteTransportUtil {
 
-  public static SerializableFunction<SequencedMessage, EventTransport> create() {
+  public static SerializableFunction<SequencedMessage, CommonTransport> create() {
     return sqMsg -> {
       PubSubMessage msg = sqMsg.getMessage();
       byte[] data = msg.getData().toByteArray();

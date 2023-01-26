@@ -16,7 +16,6 @@
 package com.google.cloud.pso.beam.transforms.transport;
 
 import com.google.cloud.pso.beam.common.transport.CommonTransport;
-import com.google.cloud.pso.beam.common.transport.EventTransport;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,7 +30,7 @@ import org.apache.beam.sdk.values.KV;
  */
 public class KafkaTransportUtil {
 
-  public static SerializableFunction<KafkaRecord<byte[], byte[]>, EventTransport> create() {
+  public static SerializableFunction<KafkaRecord<byte[], byte[]>, CommonTransport> create() {
     return record -> {
       byte[] data = record.getKV().getValue();
       // check if there is a key, if not then create a random one

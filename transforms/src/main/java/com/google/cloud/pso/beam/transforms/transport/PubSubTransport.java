@@ -54,11 +54,11 @@ public class PubSubTransport
     return this.message;
   }
 
-  public static SerializableFunction<PubsubMessage, EventTransport> create() {
+  public static SerializableFunction<PubsubMessage, PubSubTransport> create() {
     return psMessage -> new PubSubTransport(psMessage);
   }
 
-  public static SerializableBiFunction<PubsubMessage, Instant, EventTransport>
+  public static SerializableBiFunction<PubsubMessage, Instant, PubSubTransport>
           createWithTimestamp() {
     return (psMessage, instant) -> {
       var attributes = Maps.newHashMap(psMessage.getAttributeMap());

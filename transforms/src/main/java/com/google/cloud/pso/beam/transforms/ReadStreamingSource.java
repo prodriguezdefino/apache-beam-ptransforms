@@ -40,27 +40,27 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.joda.time.Duration;
 
 public class ReadStreamingSource
-        extends PTransform<PBegin, PCollection<EventTransport>> {
-
+        extends PTransform<PBegin, PCollection<? extends EventTransport>> {
+  
   private static final String NA = "";
-
+  
   private ReadStreamingSource() {
   }
-
+  
   public static ReadStreamingSource create() {
     return new ReadStreamingSource();
   }
-
+  
   @Override
   public void validate(PipelineOptions options) {
     super.validate(options);
   }
-
+  
   @Override
-  public PCollection<EventTransport> expand(PBegin input) {
+  public PCollection<? extends EventTransport> expand(PBegin input) {
     StreamingSourceOptions options
             = input.getPipeline().getOptions().as(StreamingSourceOptions.class);
-    PCollection<EventTransport> msgs = null;
+    PCollection<? extends EventTransport> msgs = null;
     switch (options.getSourceType()) {
       case PUBSUBLITE: {
         var subscriptionPath = SubscriptionPath.parse(options.getSubscription().get());
@@ -74,22 +74,24 @@ public class ReadStreamingSource
                                 .build()))
                 .apply("ConvertIntoPubsubMessages",
                         MapElements
-                                .into(TypeDescriptor.of(EventTransport.class))
-                                .via(PubSubLiteTransportUtil.create()));
+                                .into(TypeDescriptor.of(CommonTransport.class))
+                                .via(PubSubLiteTransportUtil.create()))
+                .setCoder(CommonTransportCoder.of());
         break;
       }
       case PUBSUB: {
         input.getPipeline().getCoderRegistry().registerCoderForClass(
                 PubSubTransport.class, PubSubTransportCoder.of());
-
+        
         msgs = input.apply("ReadFromPubSub",
                 PubsubIO
                         .readMessagesWithAttributesAndMessageId()
                         .fromSubscription(options.getSubscription()))
                 .apply("ConvertIntoTransport",
                         MapElements
-                                .into(TypeDescriptor.of(EventTransport.class))
-                                .via(PubSubTransport.create()));
+                                .into(TypeDescriptor.of(PubSubTransport.class))
+                                .via(PubSubTransport.create()))
+                .setCoder(PubSubTransportCoder.of());
         break;
       }
       case KAFKA: {
@@ -99,8 +101,9 @@ public class ReadStreamingSource
                 .apply("ReadFromKafka", createKafkaSource(options))
                 .apply("ConvertIntoSparrowTransport",
                         MapElements
-                                .into(TypeDescriptor.of(EventTransport.class))
-                                .via(KafkaTransportUtil.create()));
+                                .into(TypeDescriptor.of(CommonTransport.class))
+                                .via(KafkaTransportUtil.create()))
+                .setCoder(CommonTransportCoder.of());
         break;
       }
       default: {
@@ -110,11 +113,11 @@ public class ReadStreamingSource
     }
     return msgs;
   }
-
+  
   KafkaIO.Read<byte[], byte[]> createKafkaSource(PipelineOptions options) {
     var sourceTopic = options.as(StreamingSourceOptions.class).getInputTopic().get();
     var kafkaOptions = options.as(KafkaOptions.class);
-
+    
     KafkaIO.Read<byte[], byte[]> source = KafkaIO
             .readBytes()
             // will be overwritten byt the consumer factory fn
@@ -124,7 +127,7 @@ public class ReadStreamingSource
             .withValueDeserializer(ByteArrayDeserializer.class)
             .withConsumerFactoryFn(
                     new ConsumerFactoryFn(kafkaOptions));
-
+    
     switch (kafkaOptions.getTimestampType()) {
       case CREATE_TIME:
         source = source.withCreateTime(Duration.standardHours(2));
@@ -135,7 +138,7 @@ public class ReadStreamingSource
       default:
         break;
     }
-
+    
     return source;
   }
 }
