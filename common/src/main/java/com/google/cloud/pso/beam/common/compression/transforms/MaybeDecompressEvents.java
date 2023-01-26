@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
  * configured compression method.
  */
 public class MaybeDecompressEvents
-        extends PTransform<PCollection<EventTransport>, PCollection<EventTransport>> {
+        extends PTransform<PCollection<? extends EventTransport>, PCollection<EventTransport>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(MaybeDecompressEvents.class);
 
@@ -50,7 +50,7 @@ public class MaybeDecompressEvents
   }
 
   @Override
-  public PCollection<EventTransport> expand(PCollection<EventTransport> input) {
+  public PCollection<EventTransport> expand(PCollection<? extends EventTransport> input) {
     input.getPipeline().getCoderRegistry().registerCoderForClass(
             CommonTransport.class, CommonTransportCoder.of());
     return input.apply("CheckHeadersAndDecompressIfPresent", ParDo.of(new CheckForDecompression()));
