@@ -27,6 +27,9 @@ public class CompressionUtils {
 
     public static boolean shouldDecompress(String headerValue) {
       try {
+        if (headerValue == null) {
+          return true;
+        }
         switch (CompressionType.valueOf(headerValue)) {
           case AVRO_SNAPPY:
           case THRIFT_ZLIB:
