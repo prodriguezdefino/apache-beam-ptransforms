@@ -65,6 +65,7 @@ public class MaybeDecompressEvents
               context.element().getHeaders().get(
                       CompressionUtils.COMPRESSION_TYPE_HEADER_KEY))) {
         context.output(CommonTransport.of(context.element()));
+        return;
       }
       switch (CompressionUtils.CompressionType.valueOf(
               context.element().getHeaders().get(
