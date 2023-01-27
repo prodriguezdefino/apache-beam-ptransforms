@@ -61,11 +61,9 @@ public class MaybeDecompressEvents
 
     @ProcessElement
     public void processElement(ProcessContext context) {
-      if (!context.element().getHeaders().containsKey(
-              CompressionUtils.COMPRESSION_TYPE_HEADER_KEY)
-              || !CompressionUtils.CompressionType.shouldDecompress(
-                      context.element().getHeaders().get(
-                              CompressionUtils.COMPRESSION_TYPE_HEADER_KEY))) {
+      if (!CompressionUtils.CompressionType.shouldDecompress(
+              context.element().getHeaders().get(
+                      CompressionUtils.COMPRESSION_TYPE_HEADER_KEY))) {
         context.output(CommonTransport.of(context.element()));
       }
       switch (CompressionUtils.CompressionType.valueOf(

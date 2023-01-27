@@ -28,7 +28,7 @@ public class CompressionUtils {
     public static boolean shouldDecompress(String headerValue) {
       try {
         if (headerValue == null) {
-          return true;
+          return false;
         }
         switch (CompressionType.valueOf(headerValue)) {
           case AVRO_SNAPPY:
@@ -37,7 +37,7 @@ public class CompressionUtils {
           default:
             return false;
         }
-      } catch (IllegalArgumentException ex) {
+      } catch (Exception ex) {
         LOG.debug("Wrong compression header found " + headerValue, ex);
         return false;
       }
