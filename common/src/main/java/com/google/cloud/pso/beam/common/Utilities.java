@@ -21,8 +21,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 import java.util.stream.Collectors;
 import org.apache.avro.JsonProperties;
 import org.apache.avro.LogicalTypes;
@@ -34,7 +34,6 @@ import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 import org.joda.time.format.PeriodFormatterBuilder;
-import org.joda.time.format.PeriodParser;
 
 /**
  * A collection of static methods for Date manipulation.
@@ -50,6 +49,7 @@ public class Utilities {
   private static final DateTimeFormatter DAY = DateTimeFormat.forPattern("dd");
   private static final DateTimeFormatter HOUR = DateTimeFormat.forPattern("HH");
   private static final DateTimeFormatter MINUTE = DateTimeFormat.forPattern("mm");
+  private static final Random RANDOM = new Random(System.currentTimeMillis());
 
   /**
    *
@@ -165,5 +165,31 @@ public class Utilities {
             base.getNamespace(),
             false,
             baseFields);
+  }
+
+  /**
+   * Returns an integer in the provided range with a high probability to be skewed given the params
+   * provided.
+   *
+   * Based on https://stackoverflow.com/a/13548135
+   *
+   * @param min the minimum skewed value possible
+   * @param max the maximum skewed value possible
+   * @param skew the degree to which the values cluster around the mode of the distribution; higher
+   * values mean tighter clustering
+   * @param bias the tendency of the mode to approach the min, max or midpoint value; positive
+   * values bias toward max, negative values toward min
+   * @return An integer in the provided range with a high probability to be skewed given the params
+   * provided.
+   */
+  static public Integer nextSkewedBoundedInteger(
+          Integer min, Integer max, double skew, double bias) {
+    var range = max - min;
+    var mid = min + range / 2.0;
+    var unitGaussian = RANDOM.nextGaussian();
+    var biasFactor = Math.exp(bias);
+    Double retval
+            = mid + (range * (biasFactor / (biasFactor + Math.exp(-unitGaussian / skew)) - 0.5));
+    return retval.intValue();
   }
 }
