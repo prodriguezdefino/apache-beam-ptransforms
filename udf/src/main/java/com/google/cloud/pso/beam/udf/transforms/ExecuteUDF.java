@@ -15,6 +15,8 @@
  */
 package com.google.cloud.pso.beam.udf.transforms;
 
+import com.google.cloud.pso.beam.common.transport.CommonErrorTransport;
+import com.google.cloud.pso.beam.common.transport.ErrorTransport;
 import com.google.cloud.pso.beam.common.transport.EventTransport;
 import com.google.cloud.pso.beam.udf.UDF;
 import java.lang.reflect.InvocationTargetException;
@@ -23,6 +25,9 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,9 +35,14 @@ import org.slf4j.LoggerFactory;
  * Enables the execution of user defined functions that can transform a single element at a time.
  */
 public class ExecuteUDF
-        extends PTransform<PCollection<? extends EventTransport>, PCollection<EventTransport>> {
+        extends PTransform<PCollection<? extends EventTransport>, PCollectionTuple> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ExecuteUDF.class);
+
+  public static final TupleTag<EventTransport> SUCCESSFULLY_PROCESSED_EVENTS = new TupleTag<>() {
+  };
+  public static final TupleTag<ErrorTransport> FAILED_EVENTS = new TupleTag<>() {
+  };
 
   private final String udfClassName;
 
@@ -45,8 +55,10 @@ public class ExecuteUDF
   }
 
   @Override
-  public PCollection<EventTransport> expand(PCollection<? extends EventTransport> input) {
-    return input.apply("ExecuteUDF", ParDo.of(new ExecuteUDFDoFn(udfClassName)));
+  public PCollectionTuple expand(PCollection<? extends EventTransport> input) {
+    return input.apply("ExecuteUDF",
+            ParDo.of(new ExecuteUDFDoFn(udfClassName))
+                    .withOutputTags(SUCCESSFULLY_PROCESSED_EVENTS, TupleTagList.of(FAILED_EVENTS)));
   }
 
   /**
@@ -72,7 +84,16 @@ public class ExecuteUDF
 
     @ProcessElement
     public void process(ProcessContext context) {
-      context.output(udf.apply(context.element()));
+      try {
+        context.output(SUCCESSFULLY_PROCESSED_EVENTS, udf.apply(context.element()));
+      } catch (Exception ex) {
+        context.output(
+                FAILED_EVENTS,
+                CommonErrorTransport.of(
+                        context.element(),
+                        "Error occurred while trying to execute the configured UDF: " + className,
+                        ex));
+      }
     }
 
     /**
