@@ -46,9 +46,9 @@ import org.slf4j.LoggerFactory;
 public class MaybeDecompressEvents
         extends PTransform<PCollection<? extends EventTransport>, PCollectionTuple> {
 
-  public static TupleTag<CommonTransport> SUCCESSFULLY_PROCESSED_EVENTS = new TupleTag<>() {
+  public static final TupleTag<CommonTransport> SUCCESSFULLY_PROCESSED_EVENTS = new TupleTag<>() {
   };
-  public static TupleTag<ErrorTransport> FAILED_EVENTS = new TupleTag<>() {
+  public static final TupleTag<ErrorTransport> FAILED_EVENTS = new TupleTag<>() {
   };
 
   private static final Logger LOG = LoggerFactory.getLogger(MaybeDecompressEvents.class);
@@ -66,6 +66,8 @@ public class MaybeDecompressEvents
             CommonTransport.class, CommonTransportCoder.of());
     input.getPipeline().getCoderRegistry().registerCoderForClass(
             CommonErrorTransport.class, CommonErrorTransportCoder.of());
+    input.getPipeline().getCoderRegistry().registerCoderForClass(
+            ErrorTransport.class, CommonErrorTransportCoder.of());
     return input.apply("CheckHeadersAndDecompressIfPresent",
             ParDo.of(new CheckForDecompression())
                     .withOutputTags(SUCCESSFULLY_PROCESSED_EVENTS, TupleTagList.of(FAILED_EVENTS)));

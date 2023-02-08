@@ -39,9 +39,9 @@ public class ExecuteUDF
 
   private static final Logger LOG = LoggerFactory.getLogger(ExecuteUDF.class);
 
-  public static TupleTag<EventTransport> SUCCESSFULLY_PROCESSED_EVENTS = new TupleTag<>() {
+  public static final TupleTag<EventTransport> SUCCESSFULLY_PROCESSED_EVENTS = new TupleTag<>() {
   };
-  public static TupleTag<ErrorTransport> FAILED_EVENTS = new TupleTag<>() {
+  public static final TupleTag<ErrorTransport> FAILED_EVENTS = new TupleTag<>() {
   };
 
   private final String udfClassName;

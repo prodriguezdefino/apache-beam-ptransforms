@@ -15,12 +15,40 @@
  */
 package com.google.cloud.pso.beam.common.transport;
 
+import java.util.stream.Collectors;
+import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.values.Row;
+
 /**
  * Represents an error of the processing of a particular event.
  */
 public interface ErrorTransport extends EventTransport {
 
+  static final Schema ERROR_ROW_SCHEMA
+          = Schema.builder()
+                  .addStringField("id")
+                  .addStringField("errorMessage")
+                  .addStringField("serializedCause")
+                  .addStringField("serializedHeaders")
+                  .addByteArrayField("data")
+                  .build();
+
   String getErrorMessage();
 
   String getSerializedCause();
+
+  default Row toRow() {
+    return Row.withSchema(ERROR_ROW_SCHEMA)
+            .withFieldValue("id", getId())
+            .withFieldValue("errorMessage", getErrorMessage())
+            .withFieldValue("serializedCause", getSerializedCause())
+            .withFieldValue("serializedHeaders",
+                    getHeaders()
+                            .keySet()
+                            .stream()
+                            .map(key -> key + "=" + getHeaders().get(key))
+                            .collect(Collectors.joining(", ", "{", "}")))
+            .withFieldValue("data", getData())
+            .build();
+  }
 }
