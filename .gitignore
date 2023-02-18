@@ -1,3 +1,4 @@
 **/target/
 **.DS_Store
-/common/nbproject/
+**/nbproject/
+.java-version
