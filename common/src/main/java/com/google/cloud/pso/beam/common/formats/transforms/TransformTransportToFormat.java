@@ -281,7 +281,7 @@ public abstract class TransformTransportToFormat<T>
     }
   }
 
-  static Row retrieveRowFromTransport(
+  public static Row retrieveRowFromTransport(
           EventTransport transport,
           TransportFormats.Format eventFormat,
           Class<? extends TBase<?, ?>> thriftClass,
