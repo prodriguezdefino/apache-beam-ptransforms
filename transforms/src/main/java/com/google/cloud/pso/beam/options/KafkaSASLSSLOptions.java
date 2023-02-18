@@ -25,36 +25,36 @@ import org.apache.beam.sdk.options.ValueProvider;
 public interface KafkaSASLSSLOptions
         extends KafkaOptions {
 
-  @Description(value = "The keytab id on SecretManager")
+  @Description("The keytab id on SecretManager")
   ValueProvider<String> getSecretManagerKeyTabId();
 
   void setSecretManagerKeyTabId(ValueProvider<String> var1);
 
-  @Description(value = "The principal name used for Kerberos auth.")
-  @Default.String(value = "sparrow-ingestion-stg")
+  @Description("The principal name used for Kerberos auth.")
+  @Default.String("sparrow-ingestion-stg")
   String getKerberosPrincipalName();
 
   void setKerberosPrincipalName(String var1);
 
-  @Description(value = "The Kerberos realm in use.")
-  @Default.String(value = "TWITTER.BIZ")
+  @Description("The Kerberos realm in use.")
+  @Default.String("TWITTER.BIZ")
   String getKerberosRealm();
 
   void setKerberosRealm(String var1);
 
-  @Description(value = "Enables Kerberos auth debug.")
-  @Default.Boolean(value = false)
+  @Description("Enables Kerberos auth debug.")
+  @Default.Boolean(false)
   Boolean isKerberosDebug();
 
   void setKerberosDebug(Boolean var1);
 
-  @Description(value = "The truststore id on SecretManager")
+  @Description("The truststore id on SecretManager")
   ValueProvider<String> getSecretManagerTrustStoreId();
 
   void setSecretManagerTrustStoreId(ValueProvider<String> var1);
 
-  @Description(value = "Retrieves a fully initialized Kafka config object.")
-  @Default.InstanceFactory(value = KafkaConfigFactory.class)
+  @Description("Retrieves a fully initialized Kafka config object.")
+  @Default.InstanceFactory(KafkaConfigFactory.class)
   SASLSSLConfig getSASLSSLConfig();
 
   void setSASLSSLConfig(SASLSSLConfig var1);

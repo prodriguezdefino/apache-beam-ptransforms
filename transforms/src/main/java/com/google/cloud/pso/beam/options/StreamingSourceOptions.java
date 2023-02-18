@@ -27,7 +27,7 @@ import org.apache.beam.sdk.options.ValueProvider;
 public interface StreamingSourceOptions
         extends PipelineOptions {
 
-  @Description(value = "The topic to read from. In the case of PubSub or PubSubLite "
+  @Description("The topic to read from. In the case of PubSub or PubSubLite "
           + "this is merely informative. In the case of Kafka, this is the topic name "
           + "that will be used to connect.")
   @Validation.Required
@@ -35,7 +35,7 @@ public interface StreamingSourceOptions
 
   void setInputTopic(ValueProvider<String> var1);
 
-  @Description(value = "The subscription to use. "
+  @Description("The subscription to use. "
           + "In the case of PubSub and PubSubLite this is the actual identifier for the "
           + "subscription that will be used to read. In the case of Kafka this should contain "
           + "the bootstrap server configuration (this can be as the expected list of "
@@ -45,8 +45,8 @@ public interface StreamingSourceOptions
 
   void setSubscription(ValueProvider<String> var1);
 
-  @Description(value = "Selects the source type to read from.")
-  @Default.Enum(value = "PUBSUB")
+  @Description("Selects the source type to read from.")
+  @Default.Enum("PUBSUB")
   SourceType getSourceType();
 
   void setSourceType(SourceType var1);
