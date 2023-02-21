@@ -35,6 +35,36 @@ public interface CountByFieldsAggregationOptions extends TransportFormatOptions 
 
   void setAggregationKeyNames(String value);
 
+  @Description("The amount of seconds the aggregation timer will wait to trigger.")
+  @Default.Integer(30)
+  Integer getAggregationPartialTriggerSeconds();
+
+  void setAggregationPartialTriggerSeconds(Integer value);
+
+  @Description("The amount of events the aggregation timer will count to trigger.")
+  @Default.Integer(1000)
+  Integer getAggregationPartialTriggerEventCount();
+
+  void setAggregationPartialTriggerEventCount(Integer value);
+
+  @Description("Configures if the aggregation should accumulate or discard partial results.")
+  @Default.Boolean(true)
+  Boolean getAggregationDiscardPartialResults();
+
+  void setAggregationDiscardPartialResults(Boolean value);
+
+  @Description("Configures how much time in minutes the aggregation will wait for late data.")
+  @Default.Integer(0)
+  Integer getAggregationAllowedLatenessInMinutes();
+
+  void setAggregationAllowedLatenessInMinutes(Integer value);
+
+  @Description("Configures how much time the aggregation window last.")
+  @Default.Integer(1)
+  Integer getAggregationWindowInMinutes();
+
+  void setAggregationWindowInMinutes(Integer value);
+
   @Description("Retrieves a fully initialized Count configuration object.")
   @Default.InstanceFactory(CountConfigurationFactory.class)
   CountByFieldsAggregationConfiguration getCountConfiguration();

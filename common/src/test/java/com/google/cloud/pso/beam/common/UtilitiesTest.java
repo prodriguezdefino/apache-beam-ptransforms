@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
+import org.joda.time.Instant;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -51,6 +52,12 @@ public class UtilitiesTest {
     Double onePercentIsWhatOfTotal = quantity.orElse(-1).doubleValue() * 100 / totalElements;
     assertTrue(onePercentIsWhatOfTotal > 80);
     assertTrue(onePercentIsWhatOfTotal < 90);
+  }
 
+  @Test
+  public void testFormat() {
+    var now = Instant.now();
+    var formatted = Utilities.formatMinuteGranularityTimestamp(now);
+    assertNotNull(formatted);
   }
 }

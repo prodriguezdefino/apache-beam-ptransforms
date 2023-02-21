@@ -15,9 +15,11 @@
  */
 package com.google.cloud.pso.beam.transforms.aggregations;
 
+import com.google.cloud.pso.beam.common.Utilities;
 import com.google.cloud.pso.beam.common.transport.EventTransport;
-import static com.google.cloud.pso.beam.common.transport.EventTransport.EVENT_TIME_PROPERTY_NAME;
 import java.util.Optional;
+import org.apache.beam.sdk.transforms.windowing.PaneInfo;
+import org.joda.time.Instant;
 
 /**
  * Represents the result of an aggregation as a transport.
@@ -27,8 +29,10 @@ import java.util.Optional;
  */
 public interface AggregationResultTransport<K, V> extends EventTransport {
 
-  static final String AGGREGATION_NAME_KEY = "aggregationName";
-  static final String DEFAULT_AGGREGATION_NAME = "defaultAggregationName";
+  public static final String AGGREGATION_NAME_KEY = "aggregationName";
+  public static final String DEFAULT_AGGREGATION_NAME = "defaultAggregationName";
+  public static final String AGGREGATION_VALUE_TIMING_KEY = "aggregationValueTiming";
+  public static final String AGGREGATION_VALUE_IS_FINAL_KEY = "aggregationValueIsFinal";
 
   K getAggregationKey();
 
@@ -41,8 +45,39 @@ public interface AggregationResultTransport<K, V> extends EventTransport {
 
   default String getAggregationName() {
     return Optional
-            .ofNullable(this.getHeaders().get(EVENT_TIME_PROPERTY_NAME))
+            .ofNullable(this.getHeaders().get(AGGREGATION_NAME_KEY))
             .orElse(DEFAULT_AGGREGATION_NAME);
+  }
+
+  default Optional<String> getAggregationTimestamp() {
+    return Optional
+            .ofNullable(this.getHeaders().get(EVENT_TIME_KEY))
+            .map(strTs -> Instant.parse(strTs))
+            .map(Utilities::formatMinuteGranularityTimestamp)
+            .or(() -> Optional.empty());
+  }
+
+  default PaneInfo.Timing getAggregationTiming() {
+    return Optional
+            .ofNullable(this.getHeaders().get(AGGREGATION_VALUE_TIMING_KEY))
+            .map(PaneInfo.Timing::valueOf)
+            .orElse(PaneInfo.Timing.UNKNOWN);
+  }
+
+  default Boolean ifFinalValue() {
+    return Optional
+            .ofNullable(this.getHeaders().get(AGGREGATION_VALUE_IS_FINAL_KEY))
+            .map(Boolean::valueOf)
+            .orElse(false);
+  }
+
+  default String asString() {
+    return new StringBuilder()
+            .append("aggregationKey").append("=").append(getAggregationKey().toString()).append(",")
+            .append("result").append("=").append(getResult().toString()).append(",")
+            .append("timestamp").append("=").append(getAggregationTimestamp()).append(",")
+            .append("headers").append("=").append(getHeaders().toString())
+            .toString();
   }
 
 }

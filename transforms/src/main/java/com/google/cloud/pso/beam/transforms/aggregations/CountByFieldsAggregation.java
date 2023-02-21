@@ -40,7 +40,8 @@ import org.apache.beam.sdk.transforms.windowing.AfterFirst;
 import org.apache.beam.sdk.transforms.windowing.AfterPane;
 import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
 import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
-import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.transforms.windowing.Trigger;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
@@ -48,9 +49,9 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.joda.time.Duration;
-import org.joda.time.Instant;
 import com.google.cloud.pso.beam.options.CountByFieldsAggregationOptions;
 import com.google.common.collect.Maps;
+import org.joda.time.Instant;
 
 /**
  * Implements a count aggregation which groups data based on a set of configured fields. Also
@@ -80,15 +81,26 @@ public class CountByFieldsAggregation
   }
 
   Window<KV<String, Long>> getWindow(CountByFieldsAggregationOptions options) {
-    return Window.<KV<String, Long>>into(new GlobalWindows())
-            .triggering(getTrigger(30, 30))
-            .withAllowedLateness(Duration.ZERO)
-            .discardingFiredPanes();
+    var window = Window
+            .<KV<String, Long>>into(FixedWindows.of(
+                    Duration.standardMinutes(options.getAggregationWindowInMinutes())))
+            .triggering(getTrigger(
+                    options.getAggregationPartialTriggerEventCount(),
+                    options.getAggregationPartialTriggerSeconds()))
+            .withAllowedLateness(
+                    Duration.standardMinutes(options.getAggregationAllowedLatenessInMinutes()));
+    if (options.getAggregationDiscardPartialResults()) {
+      window = window.discardingFiredPanes();
+    } else {
+      window = window.accumulatingFiredPanes();
+    }
+
+    return window;
   }
 
   @Override
-  public PCollection<AggregationResultTransport> expand(
-          PCollection<? extends EventTransport> input) {
+  public PCollection<AggregationResultTransport>
+          expand(PCollection<? extends EventTransport> input) {
     var options = input.getPipeline().getOptions().as(CountByFieldsAggregationOptions.class);
     input.getPipeline().getCoderRegistry().registerCoderForClass(
             CountTransport.class, CountTransportCoder.of());
@@ -140,8 +152,8 @@ public class CountByFieldsAggregation
           extends DoFn<KV<String, Long>, AggregationResultTransport> {
 
     @ProcessElement
-    public void processElement(ProcessContext context) {
-      context.output(CountResultTransport.fromKV(context.element(), context.timestamp()));
+    public void processElement(ProcessContext context, PaneInfo pane) {
+      context.output(CountResultTransport.fromKV(context.element(), context.timestamp(), pane));
     }
   }
 
@@ -259,34 +271,24 @@ public class CountByFieldsAggregation
             EventTransport transport, CountByFieldsAggregationConfiguration configuration) {
       var format = configuration.getFormat();
       var formatHandlerFactory = TransportFormats.handlerFactory(format);
-      return switch (format) {
-        case THRIFT: {
-          var handler
-                  = (TransportFormats.ThriftHandler) formatHandlerFactory
-                          .apply(configuration.getClassName());
-          var decodedData = handler.decode(transport.getData());
-          var aggregationKey = configuration
-                  .getKeyFields()
-                  .stream()
-                  .map(keyField -> keyField + "=" + handler.stringValue(decodedData, keyField))
-                  .collect(Collectors.joining("|"));
-          yield new CountTransport(
-          transport.getId(), transport.getHeaders(), aggregationKey);
-        }
-        case AVRO: {
-          var handler
-                  = (TransportFormats.AvroGenericRecordHandler) formatHandlerFactory
-                          .apply(configuration.getAvroSchema());
-          var decodedData = handler.decode(transport.getData());
-          var aggregationKey = configuration
-                  .getKeyFields()
-                  .stream()
-                  .map(keyField -> keyField + "=" + handler.stringValue(decodedData, keyField))
-                  .collect(Collectors.joining("|"));
-          yield new CountTransport(
-          transport.getId(), transport.getHeaders(), aggregationKey);
-        }
+
+      var handler = switch (format) {
+        case THRIFT ->
+          formatHandlerFactory
+          .apply(configuration.getClassName());
+        case AVRO ->
+          formatHandlerFactory
+          .apply(configuration.getAvroSchema());
       };
+
+      var decodedData = handler.decode(transport.getData());
+      var aggregationKey = configuration
+              .getKeyFields()
+              .stream()
+              .map(keyField -> keyField + "=" + handler.stringValue(decodedData, keyField))
+              .collect(Collectors.joining("|"));
+      return new CountTransport(
+              transport.getId(), transport.getHeaders(), aggregationKey);
     }
   }
 
@@ -329,9 +331,13 @@ public class CountByFieldsAggregation
     }
 
     public static AggregationResultTransport<String, Long> fromKV(
-            KV<String, Long> kv, Instant timestamp) {
+            KV<String, Long> kv, Instant timestamp, PaneInfo pane) {
       var headers = Maps.<String, String>newHashMap();
-      headers.put(AggregationResultTransport.EVENT_TIME_PROPERTY_NAME, timestamp.toString());
+      headers.put(AggregationResultTransport.EVENT_TIME_KEY, timestamp.toString());
+      headers.put(AggregationResultTransport.AGGREGATION_VALUE_TIMING_KEY, pane.getTiming().name());
+      headers.put(AggregationResultTransport.AGGREGATION_VALUE_IS_FINAL_KEY,
+              String.valueOf(pane.isLast()));
+
       return new CountResultTransport(
               kv.getKey(),
               kv.getValue(),

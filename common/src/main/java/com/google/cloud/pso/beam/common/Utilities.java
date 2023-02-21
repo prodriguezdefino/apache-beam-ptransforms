@@ -29,6 +29,7 @@ import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.joda.time.MutablePeriod;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
@@ -42,13 +43,16 @@ public class Utilities {
 
   private static final String OUTPUT_PATH_MINUTE_WINDOW = "YYYY/MM/DD/HH/mm/";
   private static final String OUTPUT_PATH_HOURLY_WINDOW = "YYYY/MM/DD/HH/";
-  private static final String OUTPUT_PATH_FLAT_WINDOW = "YYYYMMDDHHmm";
-  private static final DateTimeFormatter OUTPUT_HOURLY_WINDOW_FILENAME_COMPONENT = ISODateTimeFormat.basicDateTime();
+  private static final String OUTPUT_PATH_FLAT_WINDOW = "YYYYMMddHHmm";
+  private static final DateTimeFormatter OUTPUT_HOURLY_WINDOW_FILENAME_COMPONENT
+          = ISODateTimeFormat.basicDateTime();
   private static final DateTimeFormatter YEAR = DateTimeFormat.forPattern("YYYY");
   private static final DateTimeFormatter MONTH = DateTimeFormat.forPattern("MM");
   private static final DateTimeFormatter DAY = DateTimeFormat.forPattern("dd");
   private static final DateTimeFormatter HOUR = DateTimeFormat.forPattern("HH");
   private static final DateTimeFormatter MINUTE = DateTimeFormat.forPattern("mm");
+  private static final DateTimeFormatter MINUTE_GRANULARITY_TS
+          = DateTimeFormat.forPattern(OUTPUT_PATH_FLAT_WINDOW);
   private static final Random RANDOM = new Random(System.currentTimeMillis());
 
   /**
@@ -135,6 +139,10 @@ public class Utilities {
             .replace("DD", DAY.print(time))
             .replace("HH", HOUR.print(time))
             .replace("mm", MINUTE.print(time));
+  }
+
+  public static String formatMinuteGranularityTimestamp(Instant instant) {
+    return MINUTE_GRANULARITY_TS.print(instant);
   }
 
   public static TableSchema addNullableTimestampColumnToBQSchema(TableSchema bqSchema, String fieldName) {
