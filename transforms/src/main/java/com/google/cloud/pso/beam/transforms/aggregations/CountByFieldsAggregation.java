@@ -123,7 +123,7 @@ public class CountByFieldsAggregation
                                     .stream()
                                     .map(entry
                                             -> KV.of(
-                                            tr.getAggregationKey() + "|" + entry.getKey(),
+                                            tr.getAggregationKey() + "#" + entry.getKey(),
                                             entry.getValue()))
                                     .toList()))
             .apply("Flat", Flatten.iterables())

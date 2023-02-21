@@ -48,7 +48,7 @@ public interface CountByFieldsAggregationOptions extends TransportFormatOptions 
   void setAggregationPartialTriggerEventCount(Integer value);
 
   @Description("Configures if the aggregation should accumulate or discard partial results.")
-  @Default.Boolean(true)
+  @Default.Boolean(false)
   Boolean getAggregationDiscardPartialResults();
 
   void setAggregationDiscardPartialResults(Boolean value);
