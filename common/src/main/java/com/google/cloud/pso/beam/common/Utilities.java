@@ -43,7 +43,8 @@ public class Utilities {
 
   private static final String OUTPUT_PATH_MINUTE_WINDOW = "YYYY/MM/DD/HH/mm/";
   private static final String OUTPUT_PATH_HOURLY_WINDOW = "YYYY/MM/DD/HH/";
-  private static final String OUTPUT_PATH_FLAT_WINDOW = "YYYYMMddHHmm";
+  private static final String OUTPUT_PATH_FLAT_WINDOW_MINUTE = "YYYYMMddHHmm";
+  private static final String OUTPUT_PATH_FLAT_WINDOW_HOUR = "YYYYMMddHH";
   private static final DateTimeFormatter OUTPUT_HOURLY_WINDOW_FILENAME_COMPONENT
           = ISODateTimeFormat.basicDateTime();
   private static final DateTimeFormatter YEAR = DateTimeFormat.forPattern("YYYY");
@@ -52,7 +53,9 @@ public class Utilities {
   private static final DateTimeFormatter HOUR = DateTimeFormat.forPattern("HH");
   private static final DateTimeFormatter MINUTE = DateTimeFormat.forPattern("mm");
   private static final DateTimeFormatter MINUTE_GRANULARITY_TS
-          = DateTimeFormat.forPattern(OUTPUT_PATH_FLAT_WINDOW);
+          = DateTimeFormat.forPattern(OUTPUT_PATH_FLAT_WINDOW_MINUTE);
+  private static final DateTimeFormatter HOUR_GRANULARITY_TS
+          = DateTimeFormat.forPattern(OUTPUT_PATH_FLAT_WINDOW_HOUR);
   private static final Random RANDOM = new Random(System.currentTimeMillis());
 
   /**
@@ -133,7 +136,7 @@ public class Utilities {
   }
 
   public static String buildFlatPathFromDateTime(DateTime time) {
-    return OUTPUT_PATH_FLAT_WINDOW
+    return OUTPUT_PATH_FLAT_WINDOW_MINUTE
             .replace("YYYY", YEAR.print(time))
             .replace("MM", MONTH.print(time))
             .replace("DD", DAY.print(time))
@@ -143,6 +146,10 @@ public class Utilities {
 
   public static String formatMinuteGranularityTimestamp(Instant instant) {
     return MINUTE_GRANULARITY_TS.print(instant);
+  }
+
+  public static String formatHourGranularityTimestamp(Instant instant) {
+    return HOUR_GRANULARITY_TS.print(instant);
   }
 
   public static TableSchema addNullableTimestampColumnToBQSchema(TableSchema bqSchema, String fieldName) {
