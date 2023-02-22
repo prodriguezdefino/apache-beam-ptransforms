@@ -51,7 +51,10 @@ import org.apache.beam.sdk.values.TypeDescriptors;
 import org.joda.time.Duration;
 import com.google.cloud.pso.beam.options.CountByFieldsAggregationOptions;
 import com.google.common.collect.Maps;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implements a count aggregation which groups data based on a set of configured fields. Also
@@ -59,6 +62,8 @@ import org.joda.time.Instant;
  */
 public class CountByFieldsAggregation
         extends PTransform<PCollection<? extends EventTransport>, PCollection<AggregationResultTransport>> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(CountByFieldsAggregation.class);
 
   CountByFieldsAggregation() {
   }
@@ -152,8 +157,13 @@ public class CountByFieldsAggregation
           extends DoFn<KV<String, Long>, AggregationResultTransport> {
 
     @ProcessElement
-    public void processElement(ProcessContext context, PaneInfo pane) {
-      context.output(CountResultTransport.fromKV(context.element(), context.timestamp(), pane));
+    public void processElement(ProcessContext context, BoundedWindow window, PaneInfo pane) {
+      context.output(
+              CountResultTransport.fromKV(
+                      context.element(),
+                      Instant.now(),
+                      window.maxTimestamp(),
+                      pane));
     }
   }
 
@@ -330,10 +340,18 @@ public class CountByFieldsAggregation
       return new byte[0];
     }
 
+    @Override
+    public ResultType getType() {
+      return ResultType.LONG;
+    }
+
     public static AggregationResultTransport<String, Long> fromKV(
-            KV<String, Long> kv, Instant timestamp, PaneInfo pane) {
+            KV<String, Long> kv, Instant elementTimestamp,
+            Instant windowEndTimestamp, PaneInfo pane) {
       var headers = Maps.<String, String>newHashMap();
-      headers.put(AggregationResultTransport.EVENT_TIME_KEY, timestamp.toString());
+      headers.put(AggregationResultTransport.EVENT_TIME_KEY, elementTimestamp.toString());
+      headers.put(AggregationResultTransport.AGGREGATION_WINDOW_TIME_KEY,
+              windowEndTimestamp.toString());
       headers.put(AggregationResultTransport.AGGREGATION_VALUE_TIMING_KEY, pane.getTiming().name());
       headers.put(AggregationResultTransport.AGGREGATION_VALUE_IS_FINAL_KEY,
               String.valueOf(pane.isLast()));

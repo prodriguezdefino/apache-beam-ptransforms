@@ -68,6 +68,12 @@
       <scope>test</scope>
     </dependency>    
     <dependency>
+      <groupId>com.google.cloud.pso.beam</groupId>
+      <artifactId>common</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
       <scope>provided</scope>

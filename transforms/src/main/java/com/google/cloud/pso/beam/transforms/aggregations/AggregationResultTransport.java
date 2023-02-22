@@ -29,14 +29,21 @@ import org.joda.time.Instant;
  */
 public interface AggregationResultTransport<K, V> extends EventTransport {
 
+  public enum ResultType {
+    INT, LONG, DOUBLE, FLOAT, STRING
+  }
+
   public static final String AGGREGATION_NAME_KEY = "aggregationName";
   public static final String DEFAULT_AGGREGATION_NAME = "defaultAggregationName";
+  public static final String AGGREGATION_WINDOW_TIME_KEY = "aggregationWindowMaxTimestamp";
   public static final String AGGREGATION_VALUE_TIMING_KEY = "aggregationValueTiming";
   public static final String AGGREGATION_VALUE_IS_FINAL_KEY = "aggregationValueIsFinal";
 
   K getAggregationKey();
 
   V getResult();
+
+  ResultType getType();
 
   default AggregationResultTransport<K, V> withAggregationName(String name) {
     this.getHeaders().put(AGGREGATION_NAME_KEY, name);
@@ -52,6 +59,14 @@ public interface AggregationResultTransport<K, V> extends EventTransport {
   default Optional<String> getAggregationTimestamp() {
     return Optional
             .ofNullable(this.getHeaders().get(EVENT_TIME_KEY))
+            .map(strTs -> Instant.parse(strTs))
+            .map(Utilities::formatHourGranularityTimestamp)
+            .or(() -> Optional.empty());
+  }
+  
+  default Optional<String> getAggregationWindowTimestamp() {
+    return Optional
+            .ofNullable(this.getHeaders().get(AGGREGATION_WINDOW_TIME_KEY))
             .map(strTs -> Instant.parse(strTs))
             .map(Utilities::formatMinuteGranularityTimestamp)
             .or(() -> Optional.empty());
