@@ -295,8 +295,8 @@ public class CountByFieldsAggregation
       var aggregationKey = configuration
               .getKeyFields()
               .stream()
-              .map(keyField -> keyField + "=" + handler.stringValue(decodedData, keyField))
-              .collect(Collectors.joining("|"));
+              .map(keyField -> keyField + "#" + handler.stringValue(decodedData, keyField))
+              .collect(Collectors.joining("#"));
       return new CountTransport(
               transport.getId(), transport.getHeaders(), aggregationKey);
     }

@@ -135,7 +135,7 @@ public class CountAggregationTest {
 
               // final result for uuid=1 is 3L
               var id1FinalResult = (Long) validateStream.get()
-                      .filter(res -> res.getAggregationKey().equals("uuid=1#count"))
+                      .filter(res -> res.getAggregationKey().equals("uuid#1#count"))
                       .filter(res -> res.ifFinalValue())
                       .findFirst().get().getResult();
 
@@ -143,7 +143,7 @@ public class CountAggregationTest {
 
               // final result for uuid=2 is 1L
               var id2FinalResult = (Long) validateStream.get()
-                      .filter(res -> res.getAggregationKey().equals("uuid=2#count"))
+                      .filter(res -> res.getAggregationKey().equals("uuid#2#count"))
                       .filter(res -> res.ifFinalValue())
                       .findFirst().get().getResult();
 
@@ -151,7 +151,7 @@ public class CountAggregationTest {
 
               // final result for uuid=1 is 1L
               var id3FinalResult = (Long) validateStream.get()
-                      .filter(res -> res.getAggregationKey().equals("uuid=3#count"))
+                      .filter(res -> res.getAggregationKey().equals("uuid#3#count"))
                       .filter(res -> res.ifFinalValue())
                       .findFirst().get().getResult();
 
