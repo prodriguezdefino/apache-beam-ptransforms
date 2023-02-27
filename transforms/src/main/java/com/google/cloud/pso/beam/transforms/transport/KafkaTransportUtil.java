@@ -16,7 +16,6 @@
 package com.google.cloud.pso.beam.transforms.transport;
 
 import com.google.cloud.pso.beam.common.transport.CommonTransport;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -25,21 +24,20 @@ import org.apache.beam.sdk.io.kafka.KafkaRecord;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 
-/**
- * Utility class to resolve Kafka transport creations and handling.
- */
+/** Utility class to resolve Kafka transport creations and handling. */
 public class KafkaTransportUtil {
 
   public static SerializableFunction<KafkaRecord<byte[], byte[]>, CommonTransport> create() {
     return record -> {
       byte[] data = record.getKV().getValue();
       // check if there is a key, if not then create a random one
-      String key = Optional.ofNullable(record.getKV().getKey())
+      String key =
+          Optional.ofNullable(record.getKV().getKey())
               .map(String::new)
               .orElse(UUID.randomUUID().toString());
       // grab the attributes from the kafka record
-      Map<String, String> attrs = StreamSupport
-              .stream(record.getHeaders().spliterator(), false)
+      var attrs =
+          StreamSupport.stream(record.getHeaders().spliterator(), false)
               .map(header -> KV.of(header.key(), new String(header.value())))
               // in case we have duplicate keys we keep the first one seen
               .collect(Collectors.toMap(KV::getKey, KV::getValue, (at1, at2) -> at1));

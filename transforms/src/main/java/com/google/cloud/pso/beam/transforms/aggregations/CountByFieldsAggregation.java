@@ -17,6 +17,8 @@ package com.google.cloud.pso.beam.transforms.aggregations;
 
 import com.google.cloud.pso.beam.common.formats.TransportFormats;
 import com.google.cloud.pso.beam.common.transport.EventTransport;
+import com.google.cloud.pso.beam.options.CountByFieldsAggregationOptions;
+import com.google.common.collect.Maps;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -40,6 +42,7 @@ import org.apache.beam.sdk.transforms.windowing.AfterFirst;
 import org.apache.beam.sdk.transforms.windowing.AfterPane;
 import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
 import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.transforms.windowing.Trigger;
@@ -49,9 +52,6 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.joda.time.Duration;
-import com.google.cloud.pso.beam.options.CountByFieldsAggregationOptions;
-import com.google.common.collect.Maps;
-import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,39 +61,36 @@ import org.slf4j.LoggerFactory;
  * enables the configuration of the window's length and trigger frequencies.
  */
 public class CountByFieldsAggregation
-        extends PTransform<PCollection<? extends EventTransport>, PCollection<AggregationResultTransport>> {
+    extends PTransform<
+        PCollection<? extends EventTransport>, PCollection<AggregationResultTransport>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(CountByFieldsAggregation.class);
 
-  CountByFieldsAggregation() {
-  }
+  CountByFieldsAggregation() {}
 
   public static CountByFieldsAggregation create() {
     return new CountByFieldsAggregation();
   }
 
   Trigger getTrigger(Integer elementCount, Integer triggerSeconds) {
-    return AfterWatermark
-            .pastEndOfWindow()
-            .withEarlyFirings(
-                    AfterFirst.of(
-                            AfterPane
-                                    .elementCountAtLeast(elementCount),
-                            AfterProcessingTime
-                                    .pastFirstElementInPane()
-                                    .plusDelayOf(
-                                            Duration.standardSeconds(triggerSeconds))));
+    return AfterWatermark.pastEndOfWindow()
+        .withEarlyFirings(
+            AfterFirst.of(
+                AfterPane.elementCountAtLeast(elementCount),
+                AfterProcessingTime.pastFirstElementInPane()
+                    .plusDelayOf(Duration.standardSeconds(triggerSeconds))));
   }
 
   Window<KV<String, Long>> getWindow(CountByFieldsAggregationOptions options) {
-    var window = Window
-            .<KV<String, Long>>into(FixedWindows.of(
-                    Duration.standardMinutes(options.getAggregationWindowInMinutes())))
-            .triggering(getTrigger(
+    var window =
+        Window.<KV<String, Long>>into(
+                FixedWindows.of(Duration.standardMinutes(options.getAggregationWindowInMinutes())))
+            .triggering(
+                getTrigger(
                     options.getAggregationPartialTriggerEventCount(),
                     options.getAggregationPartialTriggerSeconds()))
             .withAllowedLateness(
-                    Duration.standardMinutes(options.getAggregationAllowedLatenessInMinutes()));
+                Duration.standardMinutes(options.getAggregationAllowedLatenessInMinutes()));
     if (options.getAggregationDiscardPartialResults()) {
       window = window.discardingFiredPanes();
     } else {
@@ -104,41 +101,41 @@ public class CountByFieldsAggregation
   }
 
   @Override
-  public PCollection<AggregationResultTransport>
-          expand(PCollection<? extends EventTransport> input) {
+  public PCollection<AggregationResultTransport> expand(
+      PCollection<? extends EventTransport> input) {
     var options = input.getPipeline().getOptions().as(CountByFieldsAggregationOptions.class);
-    input.getPipeline().getCoderRegistry().registerCoderForClass(
-            CountTransport.class, CountTransportCoder.of());
-    input.getPipeline().getCoderRegistry().registerCoderForClass(
-            AggregationResultTransport.class, CountResultTransportCoder.of());
+    input
+        .getPipeline()
+        .getCoderRegistry()
+        .registerCoderForClass(CountTransport.class, CountTransportCoder.of());
+    input
+        .getPipeline()
+        .getCoderRegistry()
+        .registerCoderForClass(AggregationResultTransport.class, CountResultTransportCoder.of());
 
     return input
-            .apply("ToAggregationTransport",
-                    ParDo.of(new ToCountableTransports()))
-            .apply("MapToKV",
-                    MapElements
-                            .into(
-                                    TypeDescriptors.lists(
-                                            TypeDescriptors.kvs(
-                                                    TypeDescriptors.strings(),
-                                                    TypeDescriptors.longs())))
-                            .via(tr
-                                    -> tr.getMappedValues()
-                                    .entrySet()
-                                    .stream()
-                                    .map(entry
-                                            -> KV.of(
-                                            tr.getAggregationKey() + "#" + entry.getKey(),
-                                            entry.getValue()))
-                                    .toList()))
-            .apply("Flat", Flatten.iterables())
-            .apply("Window", getWindow(options))
-            .apply("CountEventsPerKey", Count.perKey())
-            .apply("ToAggregationResults", ParDo.of(new ToCountResults()));
+        .apply("ToAggregationTransport", ParDo.of(new ToCountableTransports()))
+        .apply(
+            "MapToKV",
+            MapElements.into(
+                    TypeDescriptors.lists(
+                        TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.longs())))
+                .via(
+                    tr ->
+                        tr.getMappedValues().entrySet().stream()
+                            .map(
+                                entry ->
+                                    KV.of(
+                                        tr.getAggregationKey() + "#" + entry.getKey(),
+                                        entry.getValue()))
+                            .toList()))
+        .apply("Flat", Flatten.iterables())
+        .apply("Window", getWindow(options))
+        .apply("CountEventsPerKey", Count.perKey())
+        .apply("ToAggregationResults", ParDo.of(new ToCountResults()));
   }
 
-  static class ToCountableTransports
-          extends DoFn<EventTransport, CountTransport> {
+  static class ToCountableTransports extends DoFn<EventTransport, CountTransport> {
 
     private CountByFieldsAggregationConfiguration config;
 
@@ -153,17 +150,13 @@ public class CountByFieldsAggregation
     }
   }
 
-  static class ToCountResults
-          extends DoFn<KV<String, Long>, AggregationResultTransport> {
+  static class ToCountResults extends DoFn<KV<String, Long>, AggregationResultTransport> {
 
     @ProcessElement
     public void processElement(ProcessContext context, BoundedWindow window, PaneInfo pane) {
       context.output(
-              CountResultTransport.fromKV(
-                      context.element(),
-                      Instant.now(),
-                      window.maxTimestamp(),
-                      pane));
+          CountResultTransport.fromKV(
+              context.element(), Instant.now(), window.maxTimestamp(), pane));
     }
   }
 
@@ -172,13 +165,13 @@ public class CountByFieldsAggregation
     // Aggregation key cannot be null
     private static final Coder<String> KEY_CODER = StringUtf8Coder.of();
     // A message's attributes can be null.
-    private static final Coder<Map<String, String>> HEADERS_CODER
-            = NullableCoder.of(MapCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+    private static final Coder<Map<String, String>> HEADERS_CODER =
+        NullableCoder.of(MapCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
     // A message's messageId may be null at some moments in the execution
     private static final Coder<String> ID_CODER = NullableCoder.of(StringUtf8Coder.of());
 
-    public static Coder<CountTransport>
-            of(TypeDescriptor<AggregationTransport<String, Long>> ignored) {
+    public static Coder<CountTransport> of(
+        TypeDescriptor<AggregationTransport<String, Long>> ignored) {
       return of();
     }
 
@@ -187,8 +180,7 @@ public class CountByFieldsAggregation
     }
 
     @Override
-    public void encode(CountTransport value, OutputStream outStream)
-            throws IOException {
+    public void encode(CountTransport value, OutputStream outStream) throws IOException {
       KEY_CODER.encode(value.getAggregationKey(), outStream);
       HEADERS_CODER.encode(value.getHeaders(), outStream);
       ID_CODER.encode(value.getId(), outStream);
@@ -208,13 +200,13 @@ public class CountByFieldsAggregation
     // Aggregation key cannot be null
     private static final Coder<String> KEY_CODER = StringUtf8Coder.of();
     // A message's attributes can be null.
-    private static final Coder<Map<String, String>> HEADERS_CODER
-            = NullableCoder.of(MapCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+    private static final Coder<Map<String, String>> HEADERS_CODER =
+        NullableCoder.of(MapCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
     // The result of the aggregation is assumed a Long for now
     private static final Coder<Long> RESULT_CODER = NullableCoder.of(VarLongCoder.of());
 
-    public static Coder<CountResultTransport>
-            of(TypeDescriptor<AggregationTransport<String, Long>> ignored) {
+    public static Coder<CountResultTransport> of(
+        TypeDescriptor<AggregationTransport<String, Long>> ignored) {
       return of();
     }
 
@@ -223,8 +215,7 @@ public class CountByFieldsAggregation
     }
 
     @Override
-    public void encode(CountResultTransport value, OutputStream outStream)
-            throws IOException {
+    public void encode(CountResultTransport value, OutputStream outStream) throws IOException {
       KEY_CODER.encode(value.getAggregationKey(), outStream);
       HEADERS_CODER.encode(value.getHeaders(), outStream);
       RESULT_CODER.encode(value.getResult(), outStream);
@@ -278,27 +269,22 @@ public class CountByFieldsAggregation
     }
 
     public static CountTransport fromTransportAndConfiguration(
-            EventTransport transport, CountByFieldsAggregationConfiguration configuration) {
+        EventTransport transport, CountByFieldsAggregationConfiguration configuration) {
       var format = configuration.getFormat();
       var formatHandlerFactory = TransportFormats.handlerFactory(format);
 
-      var handler = switch (format) {
-        case THRIFT ->
-          formatHandlerFactory
-          .apply(configuration.getClassName());
-        case AVRO ->
-          formatHandlerFactory
-          .apply(configuration.getAvroSchema());
-      };
+      var handler =
+          switch (format) {
+            case THRIFT -> formatHandlerFactory.apply(configuration.getClassName());
+            case AVRO -> formatHandlerFactory.apply(configuration.getAvroSchema());
+          };
 
       var decodedData = handler.decode(transport.getData());
-      var aggregationKey = configuration
-              .getKeyFields()
-              .stream()
+      var aggregationKey =
+          configuration.getKeyFields().stream()
               .map(keyField -> keyField + "#" + handler.stringValue(decodedData, keyField))
               .collect(Collectors.joining("#"));
-      return new CountTransport(
-              transport.getId(), transport.getHeaders(), aggregationKey);
+      return new CountTransport(transport.getId(), transport.getHeaders(), aggregationKey);
     }
   }
 
@@ -346,23 +332,17 @@ public class CountByFieldsAggregation
     }
 
     public static AggregationResultTransport<String, Long> fromKV(
-            KV<String, Long> kv, Instant elementTimestamp,
-            Instant windowEndTimestamp, PaneInfo pane) {
+        KV<String, Long> kv, Instant elementTimestamp, Instant windowEndTimestamp, PaneInfo pane) {
       var headers = Maps.<String, String>newHashMap();
       headers.put(AggregationResultTransport.EVENT_TIME_KEY, elementTimestamp.toString());
-      headers.put(AggregationResultTransport.AGGREGATION_WINDOW_TIME_KEY,
-              windowEndTimestamp.toString());
+      headers.put(
+          AggregationResultTransport.AGGREGATION_WINDOW_TIME_KEY, windowEndTimestamp.toString());
       headers.put(AggregationResultTransport.AGGREGATION_VALUE_TIMING_KEY, pane.getTiming().name());
-      headers.put(AggregationResultTransport.AGGREGATION_VALUE_IS_FINAL_KEY,
-              String.valueOf(pane.isLast()));
+      headers.put(
+          AggregationResultTransport.AGGREGATION_VALUE_IS_FINAL_KEY, String.valueOf(pane.isLast()));
 
-      return new CountResultTransport(
-              kv.getKey(),
-              kv.getValue(),
-              headers)
-              .withAggregationName("count");
+      return new CountResultTransport(kv.getKey(), kv.getValue(), headers)
+          .withAggregationName("count");
     }
-
   }
-
 }

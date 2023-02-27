@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -21,13 +21,11 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
 
-/**
- * Describes the options in use to read from a streaming source.
- */
-public interface StreamingSourceOptions
-        extends PipelineOptions {
+/** Describes the options in use to read from a streaming source. */
+public interface StreamingSourceOptions extends PipelineOptions {
 
-  @Description("The topic to read from. In the case of PubSub or PubSubLite "
+  @Description(
+      "The topic to read from. In the case of PubSub or PubSubLite "
           + "this is merely informative. In the case of Kafka, this is the topic name "
           + "that will be used to connect.")
   @Validation.Required
@@ -35,7 +33,8 @@ public interface StreamingSourceOptions
 
   void setInputTopic(ValueProvider<String> var1);
 
-  @Description("The subscription to use. "
+  @Description(
+      "The subscription to use. "
           + "In the case of PubSub and PubSubLite this is the actual identifier for the "
           + "subscription that will be used to read. In the case of Kafka this should contain "
           + "the bootstrap server configuration (this can be as the expected list of "

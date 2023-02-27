@@ -18,9 +18,7 @@ package com.google.cloud.pso.beam.udf;
 import com.google.cloud.pso.beam.common.transport.EventTransport;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 
-/**
- * Represents a custom function that can be implemented to transform a Beam Row object.
- */
+/** Represents a custom function that can be implemented to transform a Beam Row object. */
 public interface UDF extends SerializableFunction<EventTransport, EventTransport> {
 
   /**

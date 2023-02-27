@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -30,8 +30,7 @@ public class SecretManagerHandler {
     var encodedKey = Base64.getEncoder().encodeToString(secretId.getBytes());
     try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
       LOG.info("retrieving encoded key secret {} from projectid {}", encodedKey, projectId);
-      var secretVersionName
-              = SecretVersionName.of(projectId, encodedKey, "latest");
+      var secretVersionName = SecretVersionName.of(projectId, encodedKey, "latest");
       return client.accessSecretVersion(secretVersionName);
     } catch (Exception ex) {
       var msg = "Error while interacting with SecretManager client, key: " + encodedKey;
@@ -39,5 +38,4 @@ public class SecretManagerHandler {
       throw new RuntimeException(msg, ex);
     }
   }
-
 }

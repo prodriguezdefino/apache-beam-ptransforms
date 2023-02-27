@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,10 +15,11 @@
  */
 package com.google.cloud.pso.beam.transforms;
 
-import com.google.cloud.pso.beam.transforms.window.WindowedFileNaming;
 import static com.google.cloud.pso.beam.common.Functions.ComposeFunction;
 import static com.google.cloud.pso.beam.common.Functions.SerializableProvider;
 import static com.google.common.base.Preconditions.checkArgument;
+
+import com.google.cloud.pso.beam.transforms.window.WindowedFileNaming;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -43,7 +44,6 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.ReadableFileCoder;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.fs.MoveOptions;
-import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -63,7 +63,8 @@ import org.slf4j.LoggerFactory;
  * Composes a list of GCS objects (files) into bigger ones. By default all the original part files
  * are deleted, this can be disabled.
  */
-public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, PCollection<String>> {
+public class ComposeFiles<KeyT, DataT>
+    extends PTransform<PCollection<String>, PCollection<String>> {
 
   private Integer composeShards = 10;
   private ValueProvider<String> tempPath;
@@ -75,10 +76,9 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
   private SerializableProvider<FileIO.Sink<DataT>> sinkProvider;
   private ComposeFunction<FileIO.Sink<DataT>> composeFunction;
 
-  private ComposeFiles() {
-  }
+  private ComposeFiles() {}
 
-  static public <KeyT, SinkType> ComposeFiles<KeyT, SinkType> create() {
+  public static <KeyT, SinkType> ComposeFiles<KeyT, SinkType> create() {
     return new ComposeFiles<>();
   }
 
@@ -117,12 +117,14 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
     return this;
   }
 
-  public ComposeFiles<KeyT, DataT> withSinkProvider(SerializableProvider<FileIO.Sink<DataT>> sinkProvider) {
+  public ComposeFiles<KeyT, DataT> withSinkProvider(
+      SerializableProvider<FileIO.Sink<DataT>> sinkProvider) {
     this.sinkProvider = sinkProvider;
     return this;
   }
 
-  public ComposeFiles<KeyT, DataT> withComposeFunction(ComposeFunction<FileIO.Sink<DataT>> composeFunction) {
+  public ComposeFiles<KeyT, DataT> withComposeFunction(
+      ComposeFunction<FileIO.Sink<DataT>> composeFunction) {
     this.composeFunction = composeFunction;
     return this;
   }
@@ -131,8 +133,9 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
   public void validate(PipelineOptions options) {
     super.validate(options);
 
-    checkArgument(sinkProvider != null,
-            "A provider function returning fully configured Sink should be provided using withSinkProvider method.");
+    checkArgument(
+        sinkProvider != null,
+        "A provider function returning fully configured Sink should be provided using withSinkProvider method.");
     checkArgument(composeFunction != null, "A compose function implementation should be provided.");
     checkArgument(tempPath != null, "A temporary directory should be provided.");
   }
@@ -141,52 +144,56 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
   @Override
   public PCollection<String> expand(PCollection<String> input) {
     // registering coder for context object
-    input.getPipeline().getCoderRegistry().registerCoderForClass(ComposeContext.class, ComposeContextCoder.of());
+    input
+        .getPipeline()
+        .getCoderRegistry()
+        .registerCoderForClass(ComposeContext.class, ComposeContextCoder.of());
     // create naming strategy if not provided before
     if (this.naming == null) {
       this.naming = new WindowedFileNaming(filePrefix, fileSuffix, RandomStringUtils.random(5));
     }
 
     return input
-            // first match all the files to be processed
-            .apply("MatchFiles", FileIO.matchAll()
-                    .withEmptyMatchTreatment(EmptyMatchTreatment.ALLOW))
-            // capture readable matches
-            .apply("ToReadable", FileIO.readMatches())
-            // group into batches
-            .apply(WithKeys.of(v
-                    -> new Random().nextInt(composeShards)))
-            .setCoder(KvCoder.of(VarIntCoder.of(), ReadableFileCoder.of()))
-            .apply(GroupByKey.create())
-            // create the file bundles that will compone the composed files
-            .apply("CreateComposeBundles", ParDo.of(
-                    new CreateComposeBundles(tempPath, naming, composeShards)))
-            // materialize this results, making bundles stable
-            .apply("ReshuffleBundles",
-                    org.apache.beam.sdk.transforms.Reshuffle.<ComposeContext>viaRandomKey())
-            // create the composed temp files
-            .apply("ComposeTemporaryFiles",
-                    ParDo.of(new ExecComposeFiles<DataT>()
-                            .withSinkProvider(sinkProvider)
-                            .withComposeFunction(composeFunction)))
-            // materialize the temp files, will reuse same temp files in retries later on 
-            .apply("ReshuffleTemps",
-                    org.apache.beam.sdk.transforms.Reshuffle.<ComposeContext>viaRandomKey())
-            // move the composed files to their destination
-            .apply("CopyToDestination", ParDo.of(new CopyToDestination(outputPath, naming)))
-            // materialize destination files
-            .apply("ReshuffleDests",
-                    org.apache.beam.sdk.transforms.Reshuffle.<ComposeContext>viaRandomKey())
-            // clean all the previous parts if configured to 
-            .apply("Cleanup", ParDo.of(new CleanupFiles(cleanParts)))
-            // materialize compose file results
-            .apply("ReshuffleResults",
-                    org.apache.beam.sdk.transforms.Reshuffle.<String>viaRandomKey());
+        // first match all the files to be processed
+        .apply("MatchFiles", FileIO.matchAll().withEmptyMatchTreatment(EmptyMatchTreatment.ALLOW))
+        // capture readable matches
+        .apply("ToReadable", FileIO.readMatches())
+        // group into batches
+        .apply(WithKeys.of(v -> new Random().nextInt(composeShards)))
+        .setCoder(KvCoder.of(VarIntCoder.of(), ReadableFileCoder.of()))
+        .apply(GroupByKey.create())
+        // create the file bundles that will compone the composed files
+        .apply(
+            "CreateComposeBundles",
+            ParDo.of(new CreateComposeBundles(tempPath, naming, composeShards)))
+        // materialize this results, making bundles stable
+        .apply(
+            "ReshuffleBundles",
+            org.apache.beam.sdk.transforms.Reshuffle.<ComposeContext>viaRandomKey())
+        // create the composed temp files
+        .apply(
+            "ComposeTemporaryFiles",
+            ParDo.of(
+                new ExecComposeFiles<DataT>()
+                    .withSinkProvider(sinkProvider)
+                    .withComposeFunction(composeFunction)))
+        // materialize the temp files, will reuse same temp files in retries later on
+        .apply(
+            "ReshuffleTemps",
+            org.apache.beam.sdk.transforms.Reshuffle.<ComposeContext>viaRandomKey())
+        // move the composed files to their destination
+        .apply("CopyToDestination", ParDo.of(new CopyToDestination(outputPath, naming)))
+        // materialize destination files
+        .apply(
+            "ReshuffleDests",
+            org.apache.beam.sdk.transforms.Reshuffle.<ComposeContext>viaRandomKey())
+        // clean all the previous parts if configured to
+        .apply("Cleanup", ParDo.of(new CleanupFiles(cleanParts)))
+        // materialize compose file results
+        .apply("ReshuffleResults", org.apache.beam.sdk.transforms.Reshuffle.<String>viaRandomKey());
   }
 
-  /**
-   * Captures the information of a yet to be composed file
-   */
+  /** Captures the information of a yet to be composed file */
   static class ComposeContext implements Serializable {
 
     public Integer shard;
@@ -195,11 +202,14 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
     public String composedTempFile;
     public List<FileIO.ReadableFile> partFiles = new ArrayList<>();
 
-    public ComposeContext() {
-    }
+    public ComposeContext() {}
 
-    public ComposeContext(Integer shard, Integer totalShards, String composedFile,
-            String composedTempFile, List<FileIO.ReadableFile> partFiles) {
+    public ComposeContext(
+        Integer shard,
+        Integer totalShards,
+        String composedFile,
+        String composedTempFile,
+        List<FileIO.ReadableFile> partFiles) {
       this.shard = shard;
       this.totalShards = totalShards;
       this.composedFile = composedFile;
@@ -207,8 +217,12 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
       this.partFiles = partFiles;
     }
 
-    public static ComposeContext of(Integer shard, Integer totalShards, String composedFile,
-            String composedTempFile, List<FileIO.ReadableFile> partFiles) {
+    public static ComposeContext of(
+        Integer shard,
+        Integer totalShards,
+        String composedFile,
+        String composedTempFile,
+        List<FileIO.ReadableFile> partFiles) {
       return new ComposeContext(shard, totalShards, composedFile, composedTempFile, partFiles);
     }
 
@@ -236,9 +250,18 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
 
     @Override
     public String toString() {
-      return "ComposeContext{" + "shard=" + shard + ", totalShards=" + totalShards
-              + ", composedFile=" + composedFile + ", composedTempFile=" + composedTempFile
-              + ", partFiles=" + partFiles + '}';
+      return "ComposeContext{"
+          + "shard="
+          + shard
+          + ", totalShards="
+          + totalShards
+          + ", composedFile="
+          + composedFile
+          + ", composedTempFile="
+          + composedTempFile
+          + ", partFiles="
+          + partFiles
+          + '}';
     }
   }
 
@@ -246,9 +269,7 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
 
     private static final ComposeContextCoder INSTANCE = new ComposeContextCoder();
 
-    /**
-     * Returns the instance of {@link ReadableFileCoder}.
-     */
+    /** Returns the instance of {@link ReadableFileCoder}. */
     public static ComposeContextCoder of() {
       return INSTANCE;
     }
@@ -293,31 +314,37 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
         LOG.debug("Will delete files: {}", context.element().partFiles);
         var startTime = System.currentTimeMillis();
         FileSystems.delete(
-                // grabs the part file paths
-                context.element().partFiles
-                        .stream()
-                        // capture resources ids
-                        .map(f -> f.getMetadata().resourceId())
-                        // collects them for deletion
-                        .collect(Collectors.toList()),
-                MoveOptions.StandardMoveOptions.IGNORE_MISSING_FILES);
+            // grabs the part file paths
+            context.element().partFiles.stream()
+                // capture resources ids
+                .map(f -> f.getMetadata().resourceId())
+                // collects them for deletion
+                .collect(Collectors.toList()),
+            MoveOptions.StandardMoveOptions.IGNORE_MISSING_FILES);
 
-        LOG.debug("{} part files deleted in {}ms.", context.element().partFiles.size(), System.currentTimeMillis() - startTime);
+        LOG.debug(
+            "{} part files deleted in {}ms.",
+            context.element().partFiles.size(),
+            System.currentTimeMillis() - startTime);
 
         var tmpFileStartTime = System.currentTimeMillis();
-        Optional
-                .ofNullable(context.element().composedTempFile)
-                .map(tmpFile -> {
+        Optional.ofNullable(context.element().composedTempFile)
+            .map(
+                tmpFile -> {
                   try {
                     return FileSystems.matchSingleFileSpec(tmpFile).resourceId();
                   } catch (IOException ex) {
                     return null;
                   }
                 })
-                .ifPresent(tmpBlob -> {
+            .ifPresent(
+                tmpBlob -> {
                   try {
                     FileSystems.delete(Arrays.asList(tmpBlob));
-                    LOG.debug("File {} deleted in {}ms.", tmpBlob.toString(), System.currentTimeMillis() - tmpFileStartTime);
+                    LOG.debug(
+                        "File {} deleted in {}ms.",
+                        tmpBlob.toString(),
+                        System.currentTimeMillis() - tmpFileStartTime);
                   } catch (IOException ex) {
                     LOG.error("File {} was not deleted.", ex);
                   }
@@ -345,43 +372,51 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
     }
 
     @ProcessElement
-    public void processElement(ProcessContext context, BoundedWindow window, PaneInfo pane) throws IOException {
+    public void processElement(ProcessContext context, BoundedWindow window, PaneInfo pane)
+        throws IOException {
       var composeCtx = context.element();
       LOG.debug("received {} compose file context", composeCtx);
 
       var startTime = System.currentTimeMillis();
 
-      String fileDestination = outputPath.get()
+      String fileDestination =
+          outputPath.get()
               + naming.getFilename(
-                      window,
-                      pane,
-                      context.element().totalShards,
-                      context.element().shard,
-                      Compression.UNCOMPRESSED);
+                  window,
+                  pane,
+                  context.element().totalShards,
+                  context.element().shard,
+                  Compression.UNCOMPRESSED);
 
-      var tempResource = Optional.ofNullable(composeCtx.composedTempFile)
-              .map(tmpFile -> {
-                try {
-                  return FileSystems.matchSingleFileSpec(tmpFile).resourceId();
-                } catch (IOException ex) {
-                  return null;
-                }
-              })
+      var tempResource =
+          Optional.ofNullable(composeCtx.composedTempFile)
+              .map(
+                  tmpFile -> {
+                    try {
+                      return FileSystems.matchSingleFileSpec(tmpFile).resourceId();
+                    } catch (IOException ex) {
+                      return null;
+                    }
+                  })
               .orElse(null);
 
       if (tempResource != null) {
-        FileSystems.copy(Arrays.asList(tempResource), Arrays.asList(FileSystems.matchNewResource(fileDestination, false)));
+        FileSystems.copy(
+            Arrays.asList(tempResource),
+            Arrays.asList(FileSystems.matchNewResource(fileDestination, false)));
         LOG.debug("Copied temp file in {}ms", System.currentTimeMillis() - startTime);
       } else {
-        LOG.warn("Composed source not found (possible deletion upstream) {}, skipping.", composeCtx.composedTempFile);
+        LOG.warn(
+            "Composed source not found (possible deletion upstream) {}, skipping.",
+            composeCtx.composedTempFile);
       }
       context.output(
-              ComposeContext.of(
-                      composeCtx.shard,
-                      composeCtx.totalShards,
-                      fileDestination,
-                      composeCtx.composedTempFile,
-                      composeCtx.partFiles));
+          ComposeContext.of(
+              composeCtx.shard,
+              composeCtx.totalShards,
+              fileDestination,
+              composeCtx.composedTempFile,
+              composeCtx.partFiles));
     }
   }
 
@@ -389,7 +424,8 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
    * Given a KV of destinations and strings iterable, it will create the bundles that will be
    * composed, the compose files won't have more than 32 parts (current GCS operation limit).
    */
-  static class CreateComposeBundles extends DoFn<KV<Integer, Iterable<FileIO.ReadableFile>>, ComposeContext> {
+  static class CreateComposeBundles
+      extends DoFn<KV<Integer, Iterable<FileIO.ReadableFile>>, ComposeContext> {
 
     private static final Logger LOG = LoggerFactory.getLogger(CreateComposeBundles.class);
 
@@ -398,7 +434,8 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
     private final ValueProvider<String> tempPath;
     private String fullTempPath;
 
-    public CreateComposeBundles(ValueProvider<String> tempPath, WindowedFileNaming naming, Integer totalBundles) {
+    public CreateComposeBundles(
+        ValueProvider<String> tempPath, WindowedFileNaming naming, Integer totalBundles) {
       this.naming = naming;
       this.totalBundles = totalBundles;
       this.tempPath = tempPath;
@@ -406,35 +443,34 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
 
     @StartBundle
     public void start(PipelineOptions options) {
-      fullTempPath
-              = (tempPath.get().endsWith("/") ? tempPath.get() : tempPath.get() + "/")
-              + options.getJobName() + "/";
+      fullTempPath =
+          (tempPath.get().endsWith("/") ? tempPath.get() : tempPath.get() + "/")
+              + options.getJobName()
+              + "/";
     }
 
     @ProcessElement
-    public void processElement(
-            ProcessContext context,
-            BoundedWindow window,
-            PaneInfo pane) throws IOException {
+    public void processElement(ProcessContext context, BoundedWindow window, PaneInfo pane)
+        throws IOException {
       var currentKey = context.element().getKey();
 
-      var tempFilePartialFileName
-              = fullTempPath + naming.getFilename(window, pane, totalBundles, currentKey, Compression.UNCOMPRESSED);
+      var tempFilePartialFileName =
+          fullTempPath
+              + naming.getFilename(
+                  window, pane, totalBundles, currentKey, Compression.UNCOMPRESSED);
 
-      var composeParts
-              = StreamSupport
-                      .stream(context.element().getValue().spliterator(), false)
-                      .collect(Collectors.toList());
+      var composeParts =
+          StreamSupport.stream(context.element().getValue().spliterator(), false)
+              .collect(Collectors.toList());
 
-      LOG.info("For key {} will compose {} parts into {}.", currentKey, composeParts.size(), tempFilePartialFileName);
+      LOG.info(
+          "For key {} will compose {} parts into {}.",
+          currentKey,
+          composeParts.size(),
+          tempFilePartialFileName);
 
       context.output(
-              ComposeContext.of(
-                      currentKey,
-                      totalBundles,
-                      null,
-                      tempFilePartialFileName,
-                      composeParts));
+          ComposeContext.of(currentKey, totalBundles, null, tempFilePartialFileName, composeParts));
     }
   }
 
@@ -453,7 +489,8 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
       return this;
     }
 
-    public ExecComposeFiles<K> withComposeFunction(ComposeFunction<FileIO.Sink<K>> composeFunction) {
+    public ExecComposeFiles<K> withComposeFunction(
+        ComposeFunction<FileIO.Sink<K>> composeFunction) {
       this.composeFunction = composeFunction;
       return this;
     }
@@ -471,18 +508,16 @@ public class ComposeFiles<KeyT, DataT> extends PTransform<PCollection<String>, P
       var startTime = System.currentTimeMillis();
 
       composeFunction.apply(
-              sinkProvider.apply(),
-              composeCtx.composedTempFile,
-              composeCtx.partFiles);
+          sinkProvider.apply(), composeCtx.composedTempFile, composeCtx.partFiles);
       LOG.info("Composed temp file in {}ms", System.currentTimeMillis() - startTime);
 
       context.output(
-              ComposeContext.of(
-                      composeCtx.shard,
-                      composeCtx.totalShards,
-                      composeCtx.composedFile,
-                      composeCtx.composedTempFile,
-                      composeCtx.partFiles));
+          ComposeContext.of(
+              composeCtx.shard,
+              composeCtx.totalShards,
+              composeCtx.composedFile,
+              composeCtx.composedTempFile,
+              composeCtx.partFiles));
     }
   }
 }

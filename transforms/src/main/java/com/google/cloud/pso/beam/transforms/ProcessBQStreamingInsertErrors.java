@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,7 +15,6 @@
  */
 package com.google.cloud.pso.beam.transforms;
 
-import com.google.cloud.pso.beam.common.Utilities;
 import com.google.api.services.bigquery.model.TableReference;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
@@ -25,6 +24,7 @@ import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.pso.beam.common.Utilities;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -51,14 +51,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This transform will try to capture the error type after a failed Streaming write into BQ and decide, based on the configured fields, if a
- * schema update is needed in order to overcome the problem. Once the schema has been updated the writes into BQ will be retried until
- * succeed. In case the errors are not schema related it will propagate them downstream for later handling.
+ * This transform will try to capture the error type after a failed Streaming write into BQ and
+ * decide, based on the configured fields, if a schema update is needed in order to overcome the
+ * problem. Once the schema has been updated the writes into BQ will be retried until succeed. In
+ * case the errors are not schema related it will propagate them downstream for later handling.
  *
- * Is expected that the inserts with the new schema will stabilize after some secs/mins, during that time frame inserts will be retried
- * until successful.
+ * <p>Is expected that the inserts with the new schema will stabilize after some secs/mins, during
+ * that time frame inserts will be retried until successful.
  */
-public class ProcessBQStreamingInsertErrors extends PTransform<PCollection<BigQueryInsertError>, PCollection<BigQueryInsertError>> {
+public class ProcessBQStreamingInsertErrors
+    extends PTransform<PCollection<BigQueryInsertError>, PCollection<BigQueryInsertError>> {
   private static final Logger LOG = LoggerFactory.getLogger(ProcessBQStreamingInsertErrors.class);
 
   private final String tableSpec;
@@ -67,10 +69,10 @@ public class ProcessBQStreamingInsertErrors extends PTransform<PCollection<BigQu
   private final String insertErrorWindowDuration;
 
   public ProcessBQStreamingInsertErrors(
-          String tableSpec,
-          TableSchema bqSchema,
-          String recoverableMissingFieldname,
-          String insertErrorWindowDuration) {
+      String tableSpec,
+      TableSchema bqSchema,
+      String recoverableMissingFieldname,
+      String insertErrorWindowDuration) {
     this.tableSpec = tableSpec;
     this.bqSchema = bqSchema;
     this.recoverableMissingFieldname = recoverableMissingFieldname;
@@ -79,35 +81,41 @@ public class ProcessBQStreamingInsertErrors extends PTransform<PCollection<BigQu
 
   @Override
   public PCollection<BigQueryInsertError> expand(PCollection<BigQueryInsertError> input) {
-    var channeledErrors = input
-            .apply(insertErrorWindowDuration + "Window",
-                    Window.<BigQueryInsertError>into(
-                            FixedWindows.of(Utilities.parseDuration(insertErrorWindowDuration)))
-                            .discardingFiredPanes())
-            .apply("ChannelErrors",
-                    ParDo
-                            .of(new ChannelSchemaErrors(recoverableMissingFieldname))
-                            .withOutputTags(ChannelSchemaErrors.RECOVERABLE_ERRORS,
-                                    TupleTagList.of(ChannelSchemaErrors.NON_RECOVERABLE_ERRORS)));
+    var channeledErrors =
+        input
+            .apply(
+                insertErrorWindowDuration + "Window",
+                Window.<BigQueryInsertError>into(
+                        FixedWindows.of(Utilities.parseDuration(insertErrorWindowDuration)))
+                    .discardingFiredPanes())
+            .apply(
+                "ChannelErrors",
+                ParDo.of(new ChannelSchemaErrors(recoverableMissingFieldname))
+                    .withOutputTags(
+                        ChannelSchemaErrors.RECOVERABLE_ERRORS,
+                        TupleTagList.of(ChannelSchemaErrors.NON_RECOVERABLE_ERRORS)));
     channeledErrors
-            .get(ChannelSchemaErrors.RECOVERABLE_ERRORS)
-            .setCoder(KvCoder.of(TableReferenceCoder.of(), TableRowJsonCoder.of()))
-            .apply("GroupByErrorType", GroupByKey.create())
-            .apply("ResolveError", ParDo.of(new FixSchemaErrors(recoverableMissingFieldname)))
-            .apply("TryAgainWriteToBQ",
-                    BigQueryIO.writeTableRows()
-                            .skipInvalidRows()
-                            // for those values we have not registered as part of the new schema we ignore them
-                            .ignoreUnknownValues()
-                            .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
-                            .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-                            .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_IF_NEEDED)
-                            .to(tableSpec)
-                            .withSchema(bqSchema)
-                            .withExtendedErrorInfo()
-                            // We expect to have fixed the previously failed rows, that's why we force all the retries.
-                            // After the retries have stabilized we should not see more data coming into this branch of the pipeline.
-                            .withFailedInsertRetryPolicy(InsertRetryPolicy.alwaysRetry()));
+        .get(ChannelSchemaErrors.RECOVERABLE_ERRORS)
+        .setCoder(KvCoder.of(TableReferenceCoder.of(), TableRowJsonCoder.of()))
+        .apply("GroupByErrorType", GroupByKey.create())
+        .apply("ResolveError", ParDo.of(new FixSchemaErrors(recoverableMissingFieldname)))
+        .apply(
+            "TryAgainWriteToBQ",
+            BigQueryIO.writeTableRows()
+                .skipInvalidRows()
+                // for those values we have not registered as part of the new schema we ignore them
+                .ignoreUnknownValues()
+                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
+                .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_IF_NEEDED)
+                .to(tableSpec)
+                .withSchema(bqSchema)
+                .withExtendedErrorInfo()
+                // We expect to have fixed the previously failed rows, that's why we force all the
+                // retries.
+                // After the retries have stabilized we should not see more data coming into this
+                // branch of the pipeline.
+                .withFailedInsertRetryPolicy(InsertRetryPolicy.alwaysRetry()));
 
     // those errors that are non recoverable we return them for DLQ processing downstream
     return channeledErrors.get(ChannelSchemaErrors.NON_RECOVERABLE_ERRORS);
@@ -115,10 +123,10 @@ public class ProcessBQStreamingInsertErrors extends PTransform<PCollection<BigQu
 
   static class ChannelSchemaErrors extends DoFn<BigQueryInsertError, KV<TableReference, TableRow>> {
 
-    private static final TupleTag<BigQueryInsertError> NON_RECOVERABLE_ERRORS = new TupleTag<BigQueryInsertError>() {
-    };
-    private static final TupleTag<KV<TableReference, TableRow>> RECOVERABLE_ERRORS = new TupleTag<KV<TableReference, TableRow>>() {
-    };
+    private static final TupleTag<BigQueryInsertError> NON_RECOVERABLE_ERRORS =
+        new TupleTag<BigQueryInsertError>() {};
+    private static final TupleTag<KV<TableReference, TableRow>> RECOVERABLE_ERRORS =
+        new TupleTag<KV<TableReference, TableRow>>() {};
 
     private final String recoverableMissingFieldName;
 
@@ -129,14 +137,18 @@ public class ProcessBQStreamingInsertErrors extends PTransform<PCollection<BigQu
     @ProcessElement
     public void processElement(ProcessContext context) throws IOException {
       var error = context.element();
-      LOG.info("Captured insert error {}",error.getError().toPrettyString());
-      error.getError().getErrors().forEach(err -> {
-        if (err.getLocation().equals(recoverableMissingFieldName)) {
-          context.output(RECOVERABLE_ERRORS, KV.of(error.getTable(), error.getRow()));
-        } else {
-          context.output(NON_RECOVERABLE_ERRORS, error);
-        }
-      });
+      LOG.info("Captured insert error {}", error.getError().toPrettyString());
+      error
+          .getError()
+          .getErrors()
+          .forEach(
+              err -> {
+                if (err.getLocation().equals(recoverableMissingFieldName)) {
+                  context.output(RECOVERABLE_ERRORS, KV.of(error.getTable(), error.getRow()));
+                } else {
+                  context.output(NON_RECOVERABLE_ERRORS, error);
+                }
+              });
     }
   }
 
@@ -144,15 +156,15 @@ public class ProcessBQStreamingInsertErrors extends PTransform<PCollection<BigQu
 
     private static final TableReferenceCoder INSTANCE = new TableReferenceCoder();
 
-    private TableReferenceCoder() {
-    }
+    private TableReferenceCoder() {}
 
     public static TableReferenceCoder of() {
       return INSTANCE;
     }
 
     @Override
-    public void encode(TableReference value, OutputStream outStream) throws CoderException, IOException {
+    public void encode(TableReference value, OutputStream outStream)
+        throws CoderException, IOException {
       StringUtf8Coder.of().encode(value.getProjectId(), outStream);
       StringUtf8Coder.of().encode(value.getDatasetId(), outStream);
       StringUtf8Coder.of().encode(value.getTableId(), outStream);
@@ -164,9 +176,9 @@ public class ProcessBQStreamingInsertErrors extends PTransform<PCollection<BigQu
       String datasetId = StringUtf8Coder.of().decode(inStream);
       String tableId = StringUtf8Coder.of().decode(inStream);
       return new TableReference()
-              .setProjectId(projectId)
-              .setDatasetId(datasetId)
-              .setTableId(tableId);
+          .setProjectId(projectId)
+          .setDatasetId(datasetId)
+          .setTableId(tableId);
     }
   }
 
@@ -183,7 +195,6 @@ public class ProcessBQStreamingInsertErrors extends PTransform<PCollection<BigQu
     public void setup() {
       // Instantiate the BQ client
       bigquery = BigQueryOptions.getDefaultInstance().getService();
-
     }
 
     @ProcessElement
@@ -192,24 +203,30 @@ public class ProcessBQStreamingInsertErrors extends PTransform<PCollection<BigQu
       var newField = Field.of(insertTimestampFieldname, StandardSQLTypeName.TIMESTAMP);
 
       fixTableSchemaAddingField(context.element().getKey(), newField);
-      context.element().getValue().forEach(trow -> {
-        context.output(trow);
-      });
-
+      context
+          .element()
+          .getValue()
+          .forEach(
+              trow -> {
+                context.output(trow);
+              });
     }
 
     private void fixTableSchemaAddingField(TableReference tableRef, Field newField) {
       // Get the table, schema and fields from the already-existing table
-      var table = bigquery.getTable(TableId.of(tableRef.getProjectId(), tableRef.getDatasetId(), tableRef.getTableId()));
+      var table =
+          bigquery.getTable(
+              TableId.of(tableRef.getProjectId(), tableRef.getDatasetId(), tableRef.getTableId()));
       var schema = table.getDefinition().getSchema();
       var fields = schema.getFields();
 
       if (fields.stream().noneMatch(field -> field.getName().equals(insertTimestampFieldname))) {
         // Create a new schema adding the current fields, plus the new one
         var field_list = new ArrayList<Field>();
-        fields.forEach(f -> {
-          field_list.add(f);
-        });
+        fields.forEach(
+            f -> {
+              field_list.add(f);
+            });
         field_list.add(newField);
         var newSchema = com.google.cloud.bigquery.Schema.of(field_list);
 

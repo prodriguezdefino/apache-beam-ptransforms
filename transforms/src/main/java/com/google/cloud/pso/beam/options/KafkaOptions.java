@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -22,8 +22,7 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 
-public interface KafkaOptions
-        extends PipelineOptions {
+public interface KafkaOptions extends PipelineOptions {
 
   enum TimestampType {
     CREATE_TIME,
@@ -88,21 +87,20 @@ public interface KafkaOptions
 
   void setTimestampType(TimestampType var1);
 
-  static class KafkaConfigFactory
-          implements DefaultValueFactory<KafkaConfig> {
+  static class KafkaConfigFactory implements DefaultValueFactory<KafkaConfig> {
 
     @Override
     public KafkaConfig create(PipelineOptions options) {
       var opts = options.as(KafkaOptions.class);
       return new KafkaConfig(
-              opts.getConsumerGroupId().get(),
-              opts.getPartitionMaxFetchSize(),
-              opts.isKafkaAutocommitEnabled(),
-              opts.getDefaultApiTimeoutMs(),
-              opts.isKafkaSASLSSLEnabled(),
-              opts.getSecretManagerProjectId().get(),
-              opts.getBootstrapServers().get(),
-              opts.getKeysRootFolder());
+          opts.getConsumerGroupId().get(),
+          opts.getPartitionMaxFetchSize(),
+          opts.isKafkaAutocommitEnabled(),
+          opts.getDefaultApiTimeoutMs(),
+          opts.isKafkaSASLSSLEnabled(),
+          opts.getSecretManagerProjectId().get(),
+          opts.getBootstrapServers().get(),
+          opts.getKeysRootFolder());
     }
   }
 }

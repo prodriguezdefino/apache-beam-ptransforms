@@ -23,20 +23,20 @@ import java.util.stream.Collectors;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 
-/**
- * Utility class to resolve Kafka transport creations and handling.
- */
+/** Utility class to resolve Kafka transport creations and handling. */
 public class PubSubLiteTransportUtil {
 
   public static SerializableFunction<SequencedMessage, CommonTransport> create() {
     return sqMsg -> {
       PubSubMessage msg = sqMsg.getMessage();
       byte[] data = msg.getData().toByteArray();
-      Map<String, String> attrs = msg.getAttributesMap().entrySet()
-              .stream()
-              .map(entry -> KV.of(
-              entry.getKey(),
-              new String(entry.getValue().getValuesList().get(0).toByteArray())))
+      Map<String, String> attrs =
+          msg.getAttributesMap().entrySet().stream()
+              .map(
+                  entry ->
+                      KV.of(
+                          entry.getKey(),
+                          new String(entry.getValue().getValuesList().get(0).toByteArray())))
               .collect(Collectors.toMap(KV::getKey, KV::getValue));
       return new CommonTransport(msg.getKey().toStringUtf8(), attrs, data);
     };

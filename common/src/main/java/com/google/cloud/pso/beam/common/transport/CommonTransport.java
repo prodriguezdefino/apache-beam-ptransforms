@@ -19,9 +19,7 @@ import com.google.cloud.pso.beam.common.transport.coder.CommonTransportCoder;
 import java.util.Map;
 import org.apache.beam.sdk.coders.DefaultCoder;
 
-/**
- * Immutable generic transport.
- */
+/** Immutable generic transport. */
 @DefaultCoder(CommonTransportCoder.class)
 public class CommonTransport implements EventTransport {
 
@@ -53,5 +51,4 @@ public class CommonTransport implements EventTransport {
   public static CommonTransport of(EventTransport transport) {
     return new CommonTransport(transport.getId(), transport.getHeaders(), transport.getData());
   }
-
 }

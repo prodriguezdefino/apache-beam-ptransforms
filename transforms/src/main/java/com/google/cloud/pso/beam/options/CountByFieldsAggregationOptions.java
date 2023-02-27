@@ -24,9 +24,7 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
-/**
- * Defines the options to configure when running a count aggregation.
- */
+/** Defines the options to configure when running a count aggregation. */
 public interface CountByFieldsAggregationOptions extends TransportFormatOptions {
 
   @Description("The aggregation key field names (it can be a comma separated value list).")
@@ -72,16 +70,16 @@ public interface CountByFieldsAggregationOptions extends TransportFormatOptions 
   void setCountConfiguration(CountByFieldsAggregationConfiguration value);
 
   static class CountConfigurationFactory
-          implements DefaultValueFactory<CountByFieldsAggregationConfiguration> {
+      implements DefaultValueFactory<CountByFieldsAggregationConfiguration> {
 
     @Override
     public CountByFieldsAggregationConfiguration create(PipelineOptions options) {
       var opts = options.as(CountByFieldsAggregationOptions.class);
       return new CountByFieldsAggregationConfiguration(
-              opts.getTransportFormat(),
-              opts.getThriftClassName(),
-              opts.getAvroSchemaLocation(),
-              Arrays.asList(opts.getAggregationKeyNames().split(",")));
+          opts.getTransportFormat(),
+          opts.getThriftClassName(),
+          opts.getAvroSchemaLocation(),
+          Arrays.asList(opts.getAggregationKeyNames().split(",")));
     }
   }
 }

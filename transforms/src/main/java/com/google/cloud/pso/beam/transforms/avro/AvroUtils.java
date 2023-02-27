@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -29,17 +29,12 @@ import org.apache.parquet.io.SeekableInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- *
- * @author rpablo
- */
+/** A collection of avro related utilities. */
 public class AvroUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(AvroUtils.class);
 
-  /**
-   * Beam related implementation of Parquet InputFile (copied from Beam SDK).
-   */
+  /** Beam related implementation of Parquet InputFile (copied from Beam SDK). */
   public static class BeamParquetInputFile implements InputFile {
 
     private final SeekableByteChannel seekableByteChannel;
@@ -81,32 +76,33 @@ public class AvroUtils {
    * @return True in case the compose file was successfully written, false otherwise.
    */
   public static Boolean composeParquetFiles(
-          FileIO.Sink<GenericRecord> sink,
-          String destinationPath,
-          Iterable<FileIO.ReadableFile> composeParts) {
+      FileIO.Sink<GenericRecord> sink,
+      String destinationPath,
+      Iterable<FileIO.ReadableFile> composeParts) {
 
     LOG.debug("Writing into file {}", destinationPath);
 
-    try ( var writeChannel
-            = FileSystems.create(
-                    FileSystems.matchNewResource(destinationPath, false),
-                    CreateOptions.StandardCreateOptions.builder().setMimeType("").build())) {
+    try (var writeChannel =
+        FileSystems.create(
+            FileSystems.matchNewResource(destinationPath, false),
+            CreateOptions.StandardCreateOptions.builder().setMimeType("").build())) {
       sink.open(writeChannel);
 
       for (var readablePart : composeParts) {
         LOG.debug("Composing data from {}", readablePart.getMetadata().resourceId());
-        var readerBuilder
-                = AvroParquetReader.<GenericRecord>builder(
-                        new BeamParquetInputFile(readablePart.openSeekable()));
-        try ( var reader = readerBuilder.build()) {
+        var readerBuilder =
+            AvroParquetReader.<GenericRecord>builder(
+                new BeamParquetInputFile(readablePart.openSeekable()));
+        try (var reader = readerBuilder.build()) {
           GenericRecord read;
           while ((read = reader.read()) != null) {
             sink.write(read);
           }
         } catch (Exception ex) {
           LOG.error("Error while composing files.", ex);
-          LOG.warn("Tried to compose using file {} but failed, skipping.",
-                  readablePart.getMetadata().resourceId().getFilename());
+          LOG.warn(
+              "Tried to compose using file {} but failed, skipping.",
+              readablePart.getMetadata().resourceId().getFilename());
         }
       }
       sink.flush();

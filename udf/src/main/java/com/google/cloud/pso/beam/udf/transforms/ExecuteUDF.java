@@ -35,14 +35,12 @@ import org.slf4j.LoggerFactory;
  * Enables the execution of user defined functions that can transform a single element at a time.
  */
 public class ExecuteUDF
-        extends PTransform<PCollection<? extends EventTransport>, PCollectionTuple> {
+    extends PTransform<PCollection<? extends EventTransport>, PCollectionTuple> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ExecuteUDF.class);
 
-  public static final TupleTag<EventTransport> SUCCESSFULLY_PROCESSED_EVENTS = new TupleTag<>() {
-  };
-  public static final TupleTag<ErrorTransport> FAILED_EVENTS = new TupleTag<>() {
-  };
+  public static final TupleTag<EventTransport> SUCCESSFULLY_PROCESSED_EVENTS = new TupleTag<>() {};
+  public static final TupleTag<ErrorTransport> FAILED_EVENTS = new TupleTag<>() {};
 
   private final String udfClassName;
 
@@ -56,14 +54,13 @@ public class ExecuteUDF
 
   @Override
   public PCollectionTuple expand(PCollection<? extends EventTransport> input) {
-    return input.apply("ExecuteUDF",
-            ParDo.of(new ExecuteUDFDoFn(udfClassName))
-                    .withOutputTags(SUCCESSFULLY_PROCESSED_EVENTS, TupleTagList.of(FAILED_EVENTS)));
+    return input.apply(
+        "ExecuteUDF",
+        ParDo.of(new ExecuteUDFDoFn(udfClassName))
+            .withOutputTags(SUCCESSFULLY_PROCESSED_EVENTS, TupleTagList.of(FAILED_EVENTS)));
   }
 
-  /**
-   * In charge of loading the configured UDF and execute it on every processed row.
-   */
+  /** In charge of loading the configured UDF and execute it on every processed row. */
   static class ExecuteUDFDoFn extends DoFn<EventTransport, EventTransport> {
 
     private UDF udf;
@@ -75,8 +72,8 @@ public class ExecuteUDF
 
     @Setup
     public void setup() {
-      this.udf = Optional
-              .ofNullable(this.className)
+      this.udf =
+          Optional.ofNullable(this.className)
               .filter(cName -> !cName.isBlank())
               .map(ExecuteUDFDoFn::loadUDF)
               .orElseGet(DefaultUDF::new);
@@ -88,31 +85,29 @@ public class ExecuteUDF
         context.output(SUCCESSFULLY_PROCESSED_EVENTS, udf.apply(context.element()));
       } catch (Exception ex) {
         context.output(
-                FAILED_EVENTS,
-                CommonErrorTransport.of(
-                        context.element(),
-                        "Error occurred while trying to execute the configured UDF: " + className,
-                        ex));
+            FAILED_EVENTS,
+            CommonErrorTransport.of(
+                context.element(),
+                "Error occurred while trying to execute the configured UDF: " + className,
+                ex));
       }
     }
 
-    /**
-     * Default implementation class if no UDF is provided.
-     */
-    static class DefaultUDF implements UDF {
-    }
+    /** Default implementation class if no UDF is provided. */
+    static class DefaultUDF implements UDF {}
 
     static UDF loadUDF(String className) {
       try {
-        var clazz
-                = Class.forName(className, true, ExecuteUDFDoFn.class.getClassLoader());
+        var clazz = Class.forName(className, true, ExecuteUDFDoFn.class.getClassLoader());
         return (UDF) clazz.getDeclaredConstructor().newInstance();
       } catch (ClassNotFoundException
-              | IllegalAccessException | IllegalArgumentException
-              | InstantiationException | NoSuchMethodException
-              | SecurityException | InvocationTargetException ex) {
-        LOG.error(
-                "Problems while loading the requested UDF class name: " + className, ex);
+          | IllegalAccessException
+          | IllegalArgumentException
+          | InstantiationException
+          | NoSuchMethodException
+          | SecurityException
+          | InvocationTargetException ex) {
+        LOG.error("Problems while loading the requested UDF class name: " + className, ex);
         return null;
       }
     }

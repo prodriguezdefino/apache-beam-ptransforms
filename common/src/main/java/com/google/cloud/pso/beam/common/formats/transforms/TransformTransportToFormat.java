@@ -49,14 +49,12 @@ import org.slf4j.LoggerFactory;
  * @param <T> A format compatible with BigQueryIO direct usage.
  */
 public abstract class TransformTransportToFormat<T>
-        extends PTransform<PCollection<EventTransport>, PCollectionTuple> {
+    extends PTransform<PCollection<EventTransport>, PCollectionTuple> {
 
   private static final Logger LOG = LoggerFactory.getLogger(TransformTransportToFormat.class);
-  public static final TupleTag<ErrorTransport> FAILED_EVENTS = new TupleTag<>() {
-  };
+  public static final TupleTag<ErrorTransport> FAILED_EVENTS = new TupleTag<>() {};
 
-  TransformTransportToFormat() {
-  }
+  TransformTransportToFormat() {}
 
   public static TransformToRows transformToRows() {
     return new TransformToRows();
@@ -86,7 +84,7 @@ public abstract class TransformTransportToFormat<T>
     return TransformToGenericRecords.SUCCESSFULLY_PROCESSED_EVENTS;
   }
 
-  static abstract class TransformTransport<T> extends DoFn<EventTransport, T> {
+  abstract static class TransformTransport<T> extends DoFn<EventTransport, T> {
 
     protected Schema beamSchema;
     protected org.apache.avro.Schema avroSchema;
@@ -96,8 +94,7 @@ public abstract class TransformTransportToFormat<T>
     protected final TransportFormats.Format eventFormat;
 
     public TransformTransport(
-            String className, String avroSchemaLocation,
-            TransportFormats.Format eventFormat) {
+        String className, String avroSchemaLocation, TransportFormats.Format eventFormat) {
       this.className = className;
       this.avroSchemaLocation = avroSchemaLocation;
       this.eventFormat = eventFormat;
@@ -106,21 +103,22 @@ public abstract class TransformTransportToFormat<T>
     @Setup
     public void setup() throws Exception {
       switch (eventFormat) {
-        case THRIFT: {
-          thriftClass = retrieveThriftClass(className);
-          avroSchema = retrieveAvroSchemaFromThriftClassName(className);
-          break;
-        }
-        case AVRO: {
-          avroSchema = retrieveAvroSchemaFromLocation(avroSchemaLocation);
-          break;
-        }
+        case THRIFT:
+          {
+            thriftClass = retrieveThriftClass(className);
+            avroSchema = retrieveAvroSchemaFromThriftClassName(className);
+            break;
+          }
+        case AVRO:
+          {
+            avroSchema = retrieveAvroSchemaFromLocation(avroSchemaLocation);
+            break;
+          }
       }
       setupSpecific();
     }
 
-    protected void setupSpecific() throws Exception {
-    }
+    protected void setupSpecific() throws Exception {}
 
     @ProcessElement
     public void processElement(ProcessContext context) throws Exception {
@@ -138,30 +136,25 @@ public abstract class TransformTransportToFormat<T>
 
   public static class TransformToRows extends TransformTransportToFormat<Row> {
 
-    public static TupleTag<Row> SUCCESSFULLY_PROCESSED_EVENTS = new TupleTag<>() {
-    };
+    public static TupleTag<Row> SUCCESSFULLY_PROCESSED_EVENTS = new TupleTag<>() {};
 
     @Override
     public PCollectionTuple expand(PCollection<EventTransport> input) {
       var options = input.getPipeline().getOptions().as(TransportFormatOptions.class);
-      return input
-              .apply("TransformToRow",
-                      ParDo.of(
-                              new TransformTransportToRow(
-                                      options.getThriftClassName(),
-                                      options.getAvroSchemaLocation(),
-                                      options.getTransportFormat()))
-                              .withOutputTags(
-                                      SUCCESSFULLY_PROCESSED_EVENTS,
-                                      TupleTagList.of(FAILED_EVENTS)));
-
+      return input.apply(
+          "TransformToRow",
+          ParDo.of(
+                  new TransformTransportToRow(
+                      options.getThriftClassName(),
+                      options.getAvroSchemaLocation(),
+                      options.getTransportFormat()))
+              .withOutputTags(SUCCESSFULLY_PROCESSED_EVENTS, TupleTagList.of(FAILED_EVENTS)));
     }
 
     static class TransformTransportToRow extends TransformTransport<Row> {
 
       public TransformTransportToRow(
-              String className, String avroSchemaLocation,
-              TransportFormats.Format eventFormat) {
+          String className, String avroSchemaLocation, TransportFormats.Format eventFormat) {
         super(className, avroSchemaLocation, eventFormat);
       }
 
@@ -173,103 +166,88 @@ public abstract class TransformTransportToFormat<T>
       @Override
       public void processSpecific(ProcessContext context) throws Exception {
         context.output(
-                SUCCESSFULLY_PROCESSED_EVENTS,
-                retrieveRowFromTransport(
-                        context.element(), eventFormat, thriftClass, beamSchema, avroSchema));
+            SUCCESSFULLY_PROCESSED_EVENTS,
+            retrieveRowFromTransport(
+                context.element(), eventFormat, thriftClass, beamSchema, avroSchema));
       }
-
     }
   }
 
   public static class TransformToGenericRecords extends TransformTransportToFormat<GenericRecord> {
 
-    public static TupleTag<GenericRecord> SUCCESSFULLY_PROCESSED_EVENTS = new TupleTag<>() {
-    };
+    public static TupleTag<GenericRecord> SUCCESSFULLY_PROCESSED_EVENTS = new TupleTag<>() {};
 
     @Override
     public PCollectionTuple expand(PCollection<EventTransport> input) {
       var options = input.getPipeline().getOptions().as(TransportFormatOptions.class);
-      return input
-              .apply("TransformToGenericRecord",
-                      ParDo.of(
-                              new TransformTransportToGenericRecord(
-                                      options.getThriftClassName(),
-                                      options.getAvroSchemaLocation(),
-                                      options.getTransportFormat()))
-                              .withOutputTags(
-                                      SUCCESSFULLY_PROCESSED_EVENTS,
-                                      TupleTagList.of(FAILED_EVENTS)));
-
+      return input.apply(
+          "TransformToGenericRecord",
+          ParDo.of(
+                  new TransformTransportToGenericRecord(
+                      options.getThriftClassName(),
+                      options.getAvroSchemaLocation(),
+                      options.getTransportFormat()))
+              .withOutputTags(SUCCESSFULLY_PROCESSED_EVENTS, TupleTagList.of(FAILED_EVENTS)));
     }
 
     static class TransformTransportToGenericRecord extends TransformTransport<GenericRecord> {
 
       public TransformTransportToGenericRecord(
-              String className, String avroSchemaLocation,
-              TransportFormats.Format eventFormat) {
+          String className, String avroSchemaLocation, TransportFormats.Format eventFormat) {
         super(className, avroSchemaLocation, eventFormat);
       }
 
       @Override
       public void processSpecific(ProcessContext context) throws Exception {
         context.output(
-                SUCCESSFULLY_PROCESSED_EVENTS,
-                retrieveGenericRecordFromTransport(
-                        context.element(), eventFormat, thriftClass, avroSchema));
+            SUCCESSFULLY_PROCESSED_EVENTS,
+            retrieveGenericRecordFromTransport(
+                context.element(), eventFormat, thriftClass, avroSchema));
       }
-
     }
   }
 
   public static class TransformToTableRows extends TransformTransportToFormat<TableRow> {
 
-    public static TupleTag<TableRow> SUCCESSFULLY_PROCESSED_EVENTS = new TupleTag<>() {
-    };
+    public static TupleTag<TableRow> SUCCESSFULLY_PROCESSED_EVENTS = new TupleTag<>() {};
 
     @Override
     public PCollectionTuple expand(PCollection<EventTransport> input) {
       var options = input.getPipeline().getOptions().as(TransportFormatOptions.class);
-      return input
-              .apply("TransformToGenericRecord",
-                      ParDo.of(
-                              new TransformTransportToTableRow(
-                                      options.getThriftClassName(),
-                                      options.getAvroSchemaLocation(),
-                                      options.getTransportFormat()))
-                              .withOutputTags(
-                                      SUCCESSFULLY_PROCESSED_EVENTS,
-                                      TupleTagList.of(FAILED_EVENTS)));
+      return input.apply(
+          "TransformToGenericRecord",
+          ParDo.of(
+                  new TransformTransportToTableRow(
+                      options.getThriftClassName(),
+                      options.getAvroSchemaLocation(),
+                      options.getTransportFormat()))
+              .withOutputTags(SUCCESSFULLY_PROCESSED_EVENTS, TupleTagList.of(FAILED_EVENTS)));
     }
 
     static class TransformTransportToTableRow extends TransformTransport<TableRow> {
 
       public TransformTransportToTableRow(
-              String className, String avroSchemaLocation,
-              TransportFormats.Format eventFormat) {
+          String className, String avroSchemaLocation, TransportFormats.Format eventFormat) {
         super(className, avroSchemaLocation, eventFormat);
       }
 
       @Override
       public void processSpecific(ProcessContext context) throws Exception {
         context.output(
-                SUCCESSFULLY_PROCESSED_EVENTS,
-                retrieveTableRowFromTransport(
-                        context.element(), eventFormat, thriftClass, avroSchema));
+            SUCCESSFULLY_PROCESSED_EVENTS,
+            retrieveTableRowFromTransport(context.element(), eventFormat, thriftClass, avroSchema));
       }
-
     }
   }
 
   public static class TransformErrorTransportsToRow
-          extends PTransform<PCollection<ErrorTransport>, PCollection<Row>> {
+      extends PTransform<PCollection<ErrorTransport>, PCollection<Row>> {
 
     @Override
     public PCollection<Row> expand(PCollection<ErrorTransport> input) {
       return input
-              .apply("TransformErrorsToRow",
-                      ParDo.of(
-                              new TransformErrorTransportToRow()))
-              .setRowSchema(ErrorTransport.ERROR_ROW_SCHEMA);
+          .apply("TransformErrorsToRow", ParDo.of(new TransformErrorTransportToRow()))
+          .setRowSchema(ErrorTransport.ERROR_ROW_SCHEMA);
     }
 
     static class TransformErrorTransportToRow extends DoFn<ErrorTransport, Row> {
@@ -282,37 +260,40 @@ public abstract class TransformTransportToFormat<T>
   }
 
   public static Row retrieveRowFromTransport(
-          EventTransport transport,
-          TransportFormats.Format eventFormat,
-          Class<? extends TBase<?, ?>> thriftClass,
-          Schema beamSchema,
-          org.apache.avro.Schema avroSchema) {
+      EventTransport transport,
+      TransportFormats.Format eventFormat,
+      Class<? extends TBase<?, ?>> thriftClass,
+      Schema beamSchema,
+      org.apache.avro.Schema avroSchema) {
 
     return AvroUtils.toBeamRowStrict(
-            retrieveGenericRecordFromTransport(transport, eventFormat, thriftClass, avroSchema),
-            beamSchema);
+        retrieveGenericRecordFromTransport(transport, eventFormat, thriftClass, avroSchema),
+        beamSchema);
   }
 
   static GenericRecord retrieveGenericRecordFromTransport(
-          EventTransport transport,
-          TransportFormats.Format eventFormat,
-          Class<? extends TBase<?, ?>> thriftClass,
-          org.apache.avro.Schema avroSchema) {
+      EventTransport transport,
+      TransportFormats.Format eventFormat,
+      Class<? extends TBase<?, ?>> thriftClass,
+      org.apache.avro.Schema avroSchema) {
     try {
       switch (eventFormat) {
-        case AVRO: {
-          var reader = new GenericDatumReader<GenericRecord>(avroSchema);
-          var avroRec = new GenericData.Record(avroSchema);
-          var decoder = DecoderFactory.get().binaryDecoder(
-                  transport.getData(), 0, transport.getData().length, null);
-          reader.read(avroRec, decoder);
-          return avroRec;
-        }
-        case THRIFT: {
-          var thriftEmptyInstance = thriftClass.getConstructor().newInstance();
-          var thriftObject = getThriftObjectFromData(thriftEmptyInstance, transport.getData());
-          return retrieveGenericRecordFromThriftData(thriftObject, avroSchema);
-        }
+        case AVRO:
+          {
+            var reader = new GenericDatumReader<GenericRecord>(avroSchema);
+            var avroRec = new GenericData.Record(avroSchema);
+            var decoder =
+                DecoderFactory.get()
+                    .binaryDecoder(transport.getData(), 0, transport.getData().length, null);
+            reader.read(avroRec, decoder);
+            return avroRec;
+          }
+        case THRIFT:
+          {
+            var thriftEmptyInstance = thriftClass.getConstructor().newInstance();
+            var thriftObject = getThriftObjectFromData(thriftEmptyInstance, transport.getData());
+            return retrieveGenericRecordFromThriftData(thriftObject, avroSchema);
+          }
         default:
           throw new RuntimeException("Format not implemented " + eventFormat);
       }
@@ -324,32 +305,31 @@ public abstract class TransformTransportToFormat<T>
   }
 
   static TableRow retrieveTableRowFromTransport(
-          EventTransport transport,
-          TransportFormats.Format eventFormat,
-          Class<? extends TBase<?, ?>> thriftClass,
-          org.apache.avro.Schema avroSchema) {
+      EventTransport transport,
+      TransportFormats.Format eventFormat,
+      Class<? extends TBase<?, ?>> thriftClass,
+      org.apache.avro.Schema avroSchema) {
     try {
       switch (eventFormat) {
-        case AVRO: {
-          var reader = new GenericDatumReader<GenericRecord>(avroSchema);
-          var avroRec = new GenericData.Record(avroSchema);
-          var decoder = DecoderFactory.get().binaryDecoder(
-                  transport.getData(), 0, transport.getData().length, null);
-          reader.read(avroRec, decoder);
-          return BigQueryUtils.convertGenericRecordToTableRow(
-                  avroRec,
-                  BigQueryUtils.toTableSchema(
-                          AvroUtils.toBeamSchema(avroSchema)));
-        }
-        case THRIFT: {
-          var thriftEmptyInstance = thriftClass.getConstructor().newInstance();
-          var thriftObject = getThriftObjectFromData(thriftEmptyInstance, transport.getData());
-          var genericRecord = retrieveGenericRecordFromThriftData(thriftObject, avroSchema);
-          return BigQueryUtils.convertGenericRecordToTableRow(
-                  genericRecord,
-                  BigQueryUtils.toTableSchema(
-                          AvroUtils.toBeamSchema(avroSchema)));
-        }
+        case AVRO:
+          {
+            var reader = new GenericDatumReader<GenericRecord>(avroSchema);
+            var avroRec = new GenericData.Record(avroSchema);
+            var decoder =
+                DecoderFactory.get()
+                    .binaryDecoder(transport.getData(), 0, transport.getData().length, null);
+            reader.read(avroRec, decoder);
+            return BigQueryUtils.convertGenericRecordToTableRow(
+                avroRec, BigQueryUtils.toTableSchema(AvroUtils.toBeamSchema(avroSchema)));
+          }
+        case THRIFT:
+          {
+            var thriftEmptyInstance = thriftClass.getConstructor().newInstance();
+            var thriftObject = getThriftObjectFromData(thriftEmptyInstance, transport.getData());
+            var genericRecord = retrieveGenericRecordFromThriftData(thriftObject, avroSchema);
+            return BigQueryUtils.convertGenericRecordToTableRow(
+                genericRecord, BigQueryUtils.toTableSchema(AvroUtils.toBeamSchema(avroSchema)));
+          }
         default:
           throw new RuntimeException("Format not implemented " + eventFormat);
       }
@@ -362,29 +342,28 @@ public abstract class TransformTransportToFormat<T>
 
   public static Schema retrieveRowSchema(TransportFormatOptions options) {
     return switch (options.getTransportFormat()) {
-      case THRIFT ->
-        retrieveRowSchema(options.getThriftClassName());
-      case AVRO ->
-        AvroUtils.toBeamSchema(retrieveAvroSchemaFromLocation(options.getAvroSchemaLocation()));
-      default ->
-        throw new IllegalArgumentException(
-                "Event format has not being implemented for ingestion: "
-                + options.getTransportFormat());
+      case THRIFT -> retrieveRowSchema(options.getThriftClassName());
+      case AVRO -> AvroUtils.toBeamSchema(
+          retrieveAvroSchemaFromLocation(options.getAvroSchemaLocation()));
+      default -> throw new IllegalArgumentException(
+          "Event format has not being implemented for ingestion: " + options.getTransportFormat());
     };
   }
 
   public static org.apache.avro.Schema retrieveAvroSchema(TransportFormatOptions options) {
     switch (options.getTransportFormat()) {
-      case THRIFT: {
-        var thriftClassName = options.getThriftClassName();
-        return retrieveAvroSchemaFromThriftClassName(thriftClassName);
-      }
-      case AVRO: {
-        return retrieveAvroSchemaFromLocation(options.getAvroSchemaLocation());
-      }
+      case THRIFT:
+        {
+          var thriftClassName = options.getThriftClassName();
+          return retrieveAvroSchemaFromThriftClassName(thriftClassName);
+        }
+      case AVRO:
+        {
+          return retrieveAvroSchemaFromLocation(options.getAvroSchemaLocation());
+        }
       default:
         throw new IllegalArgumentException(
-                "Event format has not being implemented for ingestion: "
+            "Event format has not being implemented for ingestion: "
                 + options.getTransportFormat());
     }
   }
@@ -392,5 +371,4 @@ public abstract class TransformTransportToFormat<T>
   public static Schema retrieveRowSchema(String thriftClassName) {
     return AvroUtils.toBeamSchema(retrieveAvroSchemaFromThriftClassName(thriftClassName));
   }
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -19,8 +19,9 @@ import static com.google.cloud.pso.beam.common.Utilities.buildFlatPathFromDateTi
 import static com.google.cloud.pso.beam.common.Utilities.buildHourlyPartitionedPathFromDatetime;
 import static com.google.cloud.pso.beam.common.Utilities.buildPartitionedPathFromDatetime;
 import static com.google.cloud.pso.beam.common.Utilities.parseDuration;
-import com.google.common.annotations.VisibleForTesting;
 import static com.google.common.base.Preconditions.checkArgument;
+
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -119,33 +120,37 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
   }
 
   public static <String> TupleTag<String> processedDataTag() {
-    return new TupleTag<String>() {
-    };
+    return new TupleTag<String>() {};
   }
 
   public static TupleTag<Boolean> dataOnWindowSignalTag() {
-    return new TupleTag<Boolean>() {
-    };
+    return new TupleTag<Boolean>() {};
   }
 
   @Override
   public void validate(PipelineOptions options) {
     super.validate(options);
 
-    checkArgument(windowDuration != null, "A window duration should be provided using withWindowDuration method");
-    checkArgument(outputDirectory != null, "An output directory should be provided using with method");
-    checkArgument(dataOnWindowSignals != null && processedData != null,
-            "Proper TupleTags must be configured for this transform unsing with*Tag method.");
+    checkArgument(
+        windowDuration != null,
+        "A window duration should be provided using withWindowDuration method");
+    checkArgument(
+        outputDirectory != null, "An output directory should be provided using with method");
+    checkArgument(
+        dataOnWindowSignals != null && processedData != null,
+        "Proper TupleTags must be configured for this transform unsing with*Tag method.");
   }
 
   @Override
   public PDone expand(PCollectionTuple input) {
     // check if the expected tags are included in the PCollectionTuple
     if (!input.has(dataOnWindowSignals) || !input.has(processedData)) {
-      throw new IllegalArgumentException("Writes to GCS expects 2 tuple tags on PCollection (data to ingest and signals on windows).");
+      throw new IllegalArgumentException(
+          "Writes to GCS expects 2 tuple tags on PCollection (data to ingest and signals on windows).");
     }
 
-    var writeOnEmpty = WriteSuccessFileOnEmptyWindow.create()
+    var writeOnEmpty =
+        WriteSuccessFileOnEmptyWindow.create()
             .withOutputDirectory(outputDirectory)
             .withFanoutShards(fanoutShards)
             .withWindowDuration(windowDuration)
@@ -158,19 +163,20 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
 
     // Process an empty window, in case no data is coming from pubsub
     input
-            .get(dataOnWindowSignals)
-            // create a SUCCESS file if the window is empty
-            .apply("ProcessEmptyWindows", writeOnEmpty);
+        .get(dataOnWindowSignals)
+        // create a SUCCESS file if the window is empty
+        .apply("ProcessEmptyWindows", writeOnEmpty);
 
     // also, process the PCollection with info of files that were writen to destination
     input
-            .get(processedData)
-            .apply("WriteSuccessFile",
-                    CreateSuccessFileOnPresentData.create()
-                            .withFanoutShards(fanoutShards)
-                            .withWindowDuration(windowDuration)
-                            .withFlatNamingStructure(flatNamingStructure)
-                            .withSuccessFilePrefix(successFileNamePrefix));
+        .get(processedData)
+        .apply(
+            "WriteSuccessFile",
+            CreateSuccessFileOnPresentData.create()
+                .withFanoutShards(fanoutShards)
+                .withWindowDuration(windowDuration)
+                .withFlatNamingStructure(flatNamingStructure)
+                .withSuccessFilePrefix(successFileNamePrefix));
 
     return PDone.in(input.getPipeline());
   }
@@ -180,15 +186,15 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
    * to be completed and create a SUCCESS file in the containing directory (All files are expected
    * to be contained in the same directory).
    */
-  static class CreateSuccessFileOnPresentData extends PTransform<PCollection<String>, PCollection<Void>> {
+  static class CreateSuccessFileOnPresentData
+      extends PTransform<PCollection<String>, PCollection<Void>> {
 
     private Integer fanoutShards = 10;
     private String windowDuration;
     private String successFileNamePrefix = "_SUCCESS";
     private Boolean flatNamingStructure = false;
 
-    public CreateSuccessFileOnPresentData() {
-    }
+    public CreateSuccessFileOnPresentData() {}
 
     public static CreateSuccessFileOnPresentData create() {
       return new CreateSuccessFileOnPresentData();
@@ -217,28 +223,31 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
     @Override
     public PCollection<Void> expand(PCollection<String> input) {
       return input
-              // wait for all the files in the current window
-              .apply("With" + windowDuration + "Window",
-                      Window.<String>into(
-                              FixedWindows.of(parseDuration(windowDuration)))
-                              .withAllowedLateness(parseDuration(windowDuration).dividedBy(4L))
-                              .discardingFiredPanes())
-              .apply("CombineFilesInWindow",
-                      Combine.globally(CombineFilesNames.create())
-                              .withFanout(fanoutShards)
-                              .withoutDefaults())
-              .apply("CreateSuccessFile",
-                      ParDo.of(
-                              new SuccessFileWriteDoFn()
-                                      .withFlatNamingStructure(flatNamingStructure)
-                                      .withSuccessFilePrefix(successFileNamePrefix)));
+          // wait for all the files in the current window
+          .apply(
+              "With" + windowDuration + "Window",
+              Window.<String>into(FixedWindows.of(parseDuration(windowDuration)))
+                  .withAllowedLateness(parseDuration(windowDuration).dividedBy(4L))
+                  .discardingFiredPanes())
+          .apply(
+              "CombineFilesInWindow",
+              Combine.globally(CombineFilesNames.create())
+                  .withFanout(fanoutShards)
+                  .withoutDefaults())
+          .apply(
+              "CreateSuccessFile",
+              ParDo.of(
+                  new SuccessFileWriteDoFn()
+                      .withFlatNamingStructure(flatNamingStructure)
+                      .withSuccessFilePrefix(successFileNamePrefix)));
     }
 
     /**
      * Combine Strings keeping the latest filename (ordered lexicographically) as the result to be
      * returned.
      */
-    static class CombineFilesNames extends Combine.CombineFn<String, CombineFilesNames.FilenameAcc, String> {
+    static class CombineFilesNames
+        extends Combine.CombineFn<String, CombineFilesNames.FilenameAcc, String> {
 
       static class FilenameAcc implements Serializable {
 
@@ -279,7 +288,6 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
           final var other = (FilenameAcc) obj;
           return Objects.equals(this.filename, other.filename);
         }
-
       }
 
       public static CombineFilesNames create() {
@@ -292,13 +300,15 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
       }
 
       @Override
-      public CombineFilesNames.FilenameAcc addInput(CombineFilesNames.FilenameAcc mutableAccumulator, String input) {
+      public CombineFilesNames.FilenameAcc addInput(
+          CombineFilesNames.FilenameAcc mutableAccumulator, String input) {
         mutableAccumulator.add(input);
         return mutableAccumulator;
       }
 
       @Override
-      public CombineFilesNames.FilenameAcc mergeAccumulators(Iterable<CombineFilesNames.FilenameAcc> accumulators) {
+      public CombineFilesNames.FilenameAcc mergeAccumulators(
+          Iterable<CombineFilesNames.FilenameAcc> accumulators) {
         var newAccum = createAccumulator();
         for (var accum : accumulators) {
           newAccum.merge(accum);
@@ -308,7 +318,8 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
 
       @Override
       public String extractOutput(CombineFilesNames.FilenameAcc accumulator) {
-        // return a consistent representation of a file list to avoid duplications when retries happens
+        // return a consistent representation of a file list to avoid duplications when retries
+        // happens
         return accumulator.filename;
       }
     }
@@ -338,9 +349,12 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
 
         if (flatNamingStructure && window instanceof IntervalWindow) {
           var intervalWindow = (IntervalWindow) window;
-          fileName = fileName
-                  + "_" + buildFlatPathFromDateTime(intervalWindow.start().toDateTime())
-                  + "_" + buildFlatPathFromDateTime(intervalWindow.end().toDateTime());
+          fileName =
+              fileName
+                  + "_"
+                  + buildFlatPathFromDateTime(intervalWindow.start().toDateTime())
+                  + "_"
+                  + buildFlatPathFromDateTime(intervalWindow.end().toDateTime());
         }
 
         createSuccessFileInPath(context.element(), fileName, false);
@@ -363,8 +377,7 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
     private String successFileNamePrefix = "_SUCCESS";
     private Boolean flatNamingStructure = false;
 
-    private WriteSuccessFileOnEmptyWindow() {
-    }
+    private WriteSuccessFileOnEmptyWindow() {}
 
     public static WriteSuccessFileOnEmptyWindow create() {
       return new WriteSuccessFileOnEmptyWindow();
@@ -405,22 +418,23 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
     public void validate(PipelineOptions options) {
       super.validate(options);
 
-      checkArgument(windowDuration != null, "A window duration should be provided using the withWindowDuration method.");
-      checkArgument(outputDirectory != null, "An output directory should be provided using the withOutputDirectory method.");
+      checkArgument(
+          windowDuration != null,
+          "A window duration should be provided using the withWindowDuration method.");
+      checkArgument(
+          outputDirectory != null,
+          "An output directory should be provided using the withOutputDirectory method.");
     }
 
     @Override
     @SuppressWarnings("deprecation")
     public PDone expand(PCollection<Boolean> input) {
-      var window
-              = Window
-                      .<Boolean>into(FixedWindows.of(parseDuration(windowDuration)))
-                      .withAllowedLateness(parseDuration(windowDuration).dividedBy(4L))
-                      .discardingFiredPanes();
+      var window =
+          Window.<Boolean>into(FixedWindows.of(parseDuration(windowDuration)))
+              .withAllowedLateness(parseDuration(windowDuration).dividedBy(4L))
+              .discardingFiredPanes();
 
-      GenerateSequence seq = GenerateSequence
-              .from(0l)
-              .withRate(1, parseDuration(windowDuration));
+      GenerateSequence seq = GenerateSequence.from(0l).withRate(1, parseDuration(windowDuration));
 
       // when testing we only want one impulse to be generated.
       if (testingSeq) {
@@ -428,30 +442,33 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
       }
 
       // create a dummy signal on periodic intervals using same window definition
-      var periodicSignals = input.getPipeline()
+      var periodicSignals =
+          input
+              .getPipeline()
               .apply("ImpulseEvery" + windowDuration, seq)
-              .apply("CreateDummySignal", MapElements.into(TypeDescriptors.booleans()).via(ts -> true))
+              .apply(
+                  "CreateDummySignal", MapElements.into(TypeDescriptors.booleans()).via(ts -> true))
               .apply(windowDuration + "Window", window);
 
       // flatten elements with the input branch (main data)
-      PCollectionList
-              .of(periodicSignals)
-              .and(input.apply("Window" + windowDuration, window))
-              .apply("FlattenSignals", Flatten.pCollections())
-              .apply("CountOnWindow",
-                      Combine.globally(Count.<Boolean>combineFn())
-                              .withFanout(fanoutShards)
-                              .withoutDefaults())
-              .apply("CheckDummySignal", ParDo.of(
-                      new CheckDataSignalOnWindowDoFn(outputDirectory)
-                              .withSuccessFilePrefix(successFileNamePrefix)
-                              .withFlatNamingStructure(flatNamingStructure)));
+      PCollectionList.of(periodicSignals)
+          .and(input.apply("Window" + windowDuration, window))
+          .apply("FlattenSignals", Flatten.pCollections())
+          .apply(
+              "CountOnWindow",
+              Combine.globally(Count.<Boolean>combineFn())
+                  .withFanout(fanoutShards)
+                  .withoutDefaults())
+          .apply(
+              "CheckDummySignal",
+              ParDo.of(
+                  new CheckDataSignalOnWindowDoFn(outputDirectory)
+                      .withSuccessFilePrefix(successFileNamePrefix)
+                      .withFlatNamingStructure(flatNamingStructure)));
       return PDone.in(input.getPipeline());
     }
 
-    /**
-     * Converts an incoming {@link PubsubMessage} to the GenericRecord class
-     */
+    /** Converts an incoming {@link PubsubMessage} to the GenericRecord class */
     static class CheckDataSignalOnWindowDoFn extends DoFn<Long, Void> {
 
       private static final Logger LOG = LoggerFactory.getLogger(CheckDataSignalOnWindowDoFn.class);
@@ -477,7 +494,11 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
 
       @ProcessElement
       public void processElement(ProcessContext context, BoundedWindow window, PaneInfo pane) {
-        LOG.debug("Found {} signals on Pane {} and Window {}.", context.element(), window.toString(), pane.toString());
+        LOG.debug(
+            "Found {} signals on Pane {} and Window {}.",
+            context.element(),
+            window.toString(),
+            pane.toString());
 
         // if only the dummy signal has arrived in this window
         if (context.element() == DUMMY_SIGNAL_ONLY_COUNT) {
@@ -487,16 +508,19 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
           if (window instanceof IntervalWindow) {
             var intervalWindow = (IntervalWindow) window;
             var time = intervalWindow.maxTimestamp().toDateTime();
-            // check for hourly windows 
+            // check for hourly windows
             if (Hours.hoursBetween(intervalWindow.start(), intervalWindow.end()).getHours() == 1) {
               outputPath = outputPath + buildHourlyPartitionedPathFromDatetime(time);
             } else {
               outputPath = outputPath + buildPartitionedPathFromDatetime(time);
             }
             if (flatNamingStructure) {
-              fileName = fileName
-                      + "_" + buildFlatPathFromDateTime(intervalWindow.start().toDateTime())
-                      + "_" + buildFlatPathFromDateTime(intervalWindow.maxTimestamp().toDateTime());
+              fileName =
+                  fileName
+                      + "_"
+                      + buildFlatPathFromDateTime(intervalWindow.start().toDateTime())
+                      + "_"
+                      + buildFlatPathFromDateTime(intervalWindow.maxTimestamp().toDateTime());
             }
           } else {
             outputPath = outputPath + buildPartitionedPathFromDatetime(Instant.now().toDateTime());
@@ -513,12 +537,13 @@ public class CreateSuccessFiles extends PTransform<PCollectionTuple, PDone> {
     // remove trailing / if exists since is not supported at the FileSystems level
     path = path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
 
-    ResourceId dirResourceFiles = FileSystems.matchNewResource(path, isDirectory).getCurrentDirectory();
-    ResourceId successFile = dirResourceFiles
-            .resolve(fileName, ResolveOptions.StandardResolveOptions.RESOLVE_FILE);
+    ResourceId dirResourceFiles =
+        FileSystems.matchNewResource(path, isDirectory).getCurrentDirectory();
+    ResourceId successFile =
+        dirResourceFiles.resolve(fileName, ResolveOptions.StandardResolveOptions.RESOLVE_FILE);
 
     LOG.debug("Will create success file in path {}.", successFile.toString());
-    try ( var writeChannel = FileSystems.create(successFile, MimeTypes.TEXT)) {
+    try (var writeChannel = FileSystems.create(successFile, MimeTypes.TEXT)) {
       writeChannel.write(ByteBuffer.wrap(" ".getBytes()));
     } catch (IOException ex) {
       LOG.error("Success file creation failed.", ex);

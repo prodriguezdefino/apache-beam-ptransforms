@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -26,8 +26,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.joda.time.Instant;
 
 @DefaultCoder(PubSubTransportCoder.class)
-public class PubSubTransport
-        implements EventTransport {
+public class PubSubTransport implements EventTransport {
 
   private final PubsubMessage message;
 
@@ -59,12 +58,12 @@ public class PubSubTransport
   }
 
   public static SerializableBiFunction<PubsubMessage, Instant, PubSubTransport>
-          createWithTimestamp() {
+      createWithTimestamp() {
     return (psMessage, instant) -> {
       var attributes = Maps.newHashMap(psMessage.getAttributeMap());
       attributes.put("eventTimestamp", instant.toString());
       return new PubSubTransport(
-              new PubsubMessage(psMessage.getPayload(), attributes, psMessage.getMessageId()));
+          new PubsubMessage(psMessage.getPayload(), attributes, psMessage.getMessageId()));
     };
   }
 }

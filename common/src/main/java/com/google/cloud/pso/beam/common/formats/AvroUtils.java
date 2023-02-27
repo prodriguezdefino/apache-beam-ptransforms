@@ -32,9 +32,7 @@ import org.apache.thrift.TBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- *
- */
+/** */
 public class AvroUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(AvroUtils.class);
@@ -44,18 +42,18 @@ public class AvroUtils {
 
     try {
       if (avroSchemaLocation.startsWith("classpath://")) {
-        iStream = TransportFormats.AvroGenericRecordHandler.class
-                .getResourceAsStream(
-                        avroSchemaLocation.replace("classpath://", "/"));
+        iStream =
+            TransportFormats.AvroGenericRecordHandler.class.getResourceAsStream(
+                avroSchemaLocation.replace("classpath://", "/"));
       } else {
-        iStream
-                = Channels.newInputStream(FileSystems.open(
-                        FileSystems.matchNewResource(avroSchemaLocation, false)));
+        iStream =
+            Channels.newInputStream(
+                FileSystems.open(FileSystems.matchNewResource(avroSchemaLocation, false)));
       }
       return new Schema.Parser().parse(iStream);
     } catch (Exception ex) {
-      var msg = "Error while trying to retrieve the avro schema from location "
-              + avroSchemaLocation;
+      var msg =
+          "Error while trying to retrieve the avro schema from location " + avroSchemaLocation;
       throw new RuntimeException(msg, ex);
     }
   }
@@ -65,17 +63,18 @@ public class AvroUtils {
   }
 
   public static GenericRecord retrieveGenericRecordFromThriftData(
-          TBase<?, ?> thriftObject, Schema avroSchema) {
+      TBase<?, ?> thriftObject, Schema avroSchema) {
     try {
       var bao = new ByteArrayOutputStream();
       var w = new ThriftDatumWriter(avroSchema);
       var e = EncoderFactory.get().binaryEncoder(bao, null);
       w.write(thriftObject, e);
       e.flush();
-      return new GenericDatumReader<GenericRecord>(avroSchema).read(
+      return new GenericDatumReader<GenericRecord>(avroSchema)
+          .read(
               null,
-              DecoderFactory.get().binaryDecoder(
-                      new ByteArrayInputStream(bao.toByteArray()), null));
+              DecoderFactory.get()
+                  .binaryDecoder(new ByteArrayInputStream(bao.toByteArray()), null));
     } catch (IOException ex) {
       var msg = "Error while trying to retrieve a generic record from the thrift data.";
       LOG.error(msg, ex);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -57,8 +57,7 @@ import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class MetricsHandler
-        extends PTransform<PCollection<List<Long>>, PDone> {
+public abstract class MetricsHandler extends PTransform<PCollection<List<Long>>, PDone> {
 
   public static enum MetricComputationType {
     DISTRIBUTION,
@@ -87,18 +86,22 @@ public abstract class MetricsHandler
 
   public static MetricsHandler create(String metricName, MetricComputationType type) {
     switch (type) {
-      case DISTRIBUTION: {
-        return new DistributionComputation(metricName);
-      }
-      case PERCENTILE: {
-        return new PercentileComputation(metricName);
-      }
-      case PERCENTILE_SAMPLE: {
-        return new PercentileSampleComputation(metricName);
-      }
-      case NONE: {
-        return new NoOpHandler();
-      }
+      case DISTRIBUTION:
+        {
+          return new DistributionComputation(metricName);
+        }
+      case PERCENTILE:
+        {
+          return new PercentileComputation(metricName);
+        }
+      case PERCENTILE_SAMPLE:
+        {
+          return new PercentileSampleComputation(metricName);
+        }
+      case NONE:
+        {
+          return new NoOpHandler();
+        }
     }
     throw new IllegalArgumentException("Unrecognized metric calculation type.");
   }
@@ -114,21 +117,15 @@ public abstract class MetricsHandler
   }
 
   Trigger getTrigger() {
-    return AfterWatermark
-            .pastEndOfWindow()
-            .withEarlyFirings(
-                    AfterFirst.of(
-                            AfterPane
-                                    .elementCountAtLeast(this.maxPaneElements),
-                            AfterProcessingTime
-                                    .pastFirstElementInPane()
-                                    .plusDelayOf(
-                                            Duration.standardSeconds(
-                                                    this.maxPaneSeconds))));
+    return AfterWatermark.pastEndOfWindow()
+        .withEarlyFirings(
+            AfterFirst.of(
+                AfterPane.elementCountAtLeast(this.maxPaneElements),
+                AfterProcessingTime.pastFirstElementInPane()
+                    .plusDelayOf(Duration.standardSeconds(this.maxPaneSeconds))));
   }
 
-  static abstract class AbstractMetricsPropagation<T>
-          extends DoFn<T, Void> {
+  abstract static class AbstractMetricsPropagation<T> extends DoFn<T, Void> {
 
     private String projectName;
     private TimeSeries.Builder timeSeriesBuilder;
@@ -152,84 +149,78 @@ public abstract class MetricsHandler
       metricLabels.put("transform", "CaptureMetrics");
       metricLabels.put("job_id", options.as(DataflowWorkerHarnessOptions.class).getJobId());
       this.metrics.put(
-              MetricsHandler.P50_METRIC_KEY,
-              Metric.newBuilder()
-                      .setType("custom.googleapis.com/dataflow/" + this.metricName + "_P50")
-                      .putAllLabels(metricLabels)
-                      .build());
+          MetricsHandler.P50_METRIC_KEY,
+          Metric.newBuilder()
+              .setType("custom.googleapis.com/dataflow/" + this.metricName + "_P50")
+              .putAllLabels(metricLabels)
+              .build());
       this.metrics.put(
-              MetricsHandler.P95_METRIC_KEY,
-              Metric.newBuilder()
-                      .setType("custom.googleapis.com/dataflow/" + this.metricName + "_P95")
-                      .putAllLabels(metricLabels)
-                      .build());
+          MetricsHandler.P95_METRIC_KEY,
+          Metric.newBuilder()
+              .setType("custom.googleapis.com/dataflow/" + this.metricName + "_P95")
+              .putAllLabels(metricLabels)
+              .build());
       this.metrics.put(
-              MetricsHandler.P99_METRIC_KEY,
-              Metric.newBuilder()
-                      .setType("custom.googleapis.com/dataflow/" + this.metricName + "_P99")
-                      .putAllLabels(metricLabels)
-                      .build());
+          MetricsHandler.P99_METRIC_KEY,
+          Metric.newBuilder()
+              .setType("custom.googleapis.com/dataflow/" + this.metricName + "_P99")
+              .putAllLabels(metricLabels)
+              .build());
       this.metrics.put(
-              MetricsHandler.MIN_METRIC_KEY,
-              Metric.newBuilder().
-                      setType("custom.googleapis.com/dataflow/" + this.metricName + "_MIN")
-                      .putAllLabels(metricLabels)
-                      .build());
+          MetricsHandler.MIN_METRIC_KEY,
+          Metric.newBuilder()
+              .setType("custom.googleapis.com/dataflow/" + this.metricName + "_MIN")
+              .putAllLabels(metricLabels)
+              .build());
       this.metrics.put(
-              MetricsHandler.MAX_METRIC_KEY,
-              Metric.newBuilder()
-                      .setType("custom.googleapis.com/dataflow/" + this.metricName + "_MAX")
-                      .putAllLabels(metricLabels)
-                      .build());
+          MetricsHandler.MAX_METRIC_KEY,
+          Metric.newBuilder()
+              .setType("custom.googleapis.com/dataflow/" + this.metricName + "_MAX")
+              .putAllLabels(metricLabels)
+              .build());
       var resourceLabels = Maps.<String, String>newHashMap();
       resourceLabels.put("project_id", this.projectName);
       resourceLabels.put("job_name", options.as(DataflowWorkerHarnessOptions.class).getJobName());
       resourceLabels.put("region", options.as(DataflowWorkerHarnessOptions.class).getRegion());
-      this.timeSeriesBuilder = TimeSeries
-              .newBuilder()
+      this.timeSeriesBuilder =
+          TimeSeries.newBuilder()
               .setResource(
-                      MonitoredResource
-                              .newBuilder()
-                              .setType("dataflow_job")
-                              .putAllLabels(resourceLabels)
-                              .build());
+                  MonitoredResource.newBuilder()
+                      .setType("dataflow_job")
+                      .putAllLabels(resourceLabels)
+                      .build());
     }
 
     Point createPointFromValue(long timeInMillis, double value) {
       return Point.newBuilder()
-              .setInterval(
-                      TimeInterval.newBuilder()
-                              .setEndTime(
-                                      Timestamps.fromMillis(timeInMillis))
-                              .build())
-              .setValue(
-                      TypedValue.newBuilder()
-                              .setDoubleValue(value)
-                              .build())
-              .build();
+          .setInterval(
+              TimeInterval.newBuilder().setEndTime(Timestamps.fromMillis(timeInMillis)).build())
+          .setValue(TypedValue.newBuilder().setDoubleValue(value).build())
+          .build();
     }
 
     CreateTimeSeriesRequest createRequest(Metric metric, List<Point> monitoringPoints) {
       return CreateTimeSeriesRequest.newBuilder()
-              .setName("projects/" + this.projectName)
-              .addAllTimeSeries(
-                      monitoringPoints.stream()
-                              .map(p -> this.timeSeriesBuilder
+          .setName("projects/" + this.projectName)
+          .addAllTimeSeries(
+              monitoringPoints.stream()
+                  .map(
+                      p ->
+                          this.timeSeriesBuilder
                               .clearPoints()
                               .clearMetric()
                               .setMetric(metric)
                               .addPoints(p)
                               .build())
-                              .collect(Collectors.toList())).build();
+                  .collect(Collectors.toList()))
+          .build();
     }
 
     void propagateMetricPoint(Metric metric, long timeInMillis, double value) {
       try {
         this.metricServiceClient.createTimeSeries(
-                this.createRequest(
-                        metric,
-                        Lists.newArrayList(
-                                this.createPointFromValue(timeInMillis, value))));
+            this.createRequest(
+                metric, Lists.newArrayList(this.createPointFromValue(timeInMillis, value))));
       } catch (Exception ex) {
         LOG.warn("Errors occurred while propagating metrics, values are discarded.", ex);
       }
@@ -241,8 +232,7 @@ public abstract class MetricsHandler
     }
   }
 
-  public static class DistributionComputation
-          extends MetricsHandler {
+  public static class DistributionComputation extends MetricsHandler {
 
     private DistributionComputation(String metricName) {
       super(metricName);
@@ -250,13 +240,12 @@ public abstract class MetricsHandler
 
     @Override
     public PDone expand(PCollection<List<Long>> input) {
-      input.apply("CaptureOnDistribution",
-              ParDo.of(new CaptureMetricsOnDistribution(this.metricName)));
+      input.apply(
+          "CaptureOnDistribution", ParDo.of(new CaptureMetricsOnDistribution(this.metricName)));
       return PDone.in((Pipeline) input.getPipeline());
     }
 
-    static class CaptureMetricsOnDistribution
-            extends DoFn<List<Long>, Void> {
+    static class CaptureMetricsOnDistribution extends DoFn<List<Long>, Void> {
 
       private static Distribution pubsubReceivedIngestionLatencyMetric = null;
       private final String metricName;
@@ -269,8 +258,8 @@ public abstract class MetricsHandler
         if (pubsubReceivedIngestionLatencyMetric == null) {
           synchronized (CaptureMetricsOnDistribution.class) {
             if (pubsubReceivedIngestionLatencyMetric == null) {
-              pubsubReceivedIngestionLatencyMetric
-                      = Metrics.distribution(CaptureMetricsOnDistribution.class, metricName);
+              pubsubReceivedIngestionLatencyMetric =
+                  Metrics.distribution(CaptureMetricsOnDistribution.class, metricName);
             }
           }
         }
@@ -287,8 +276,7 @@ public abstract class MetricsHandler
     }
   }
 
-  public static class PercentileSampleComputation
-          extends MetricsHandler {
+  public static class PercentileSampleComputation extends MetricsHandler {
 
     private Integer sampleCount = 10;
 
@@ -305,20 +293,19 @@ public abstract class MetricsHandler
     @Override
     public PDone expand(PCollection<List<Long>> input) {
       input
-              .apply("1minWindow",
-                      Window.<List<Long>>into(new GlobalWindows())
-                              .triggering(this.getTrigger())
-                              .withAllowedLateness(Duration.ZERO)
-                              .discardingFiredPanes())
-              .apply("Sample" + this.sampleCount,
-                      Sample.any(this.sampleCount))
-              .apply("PropagateMetrics",
-                      ParDo.of(new ProcessAndPropagateSampleMetrics(this.metricName)));
+          .apply(
+              "1minWindow",
+              Window.<List<Long>>into(new GlobalWindows())
+                  .triggering(this.getTrigger())
+                  .withAllowedLateness(Duration.ZERO)
+                  .discardingFiredPanes())
+          .apply("Sample" + this.sampleCount, Sample.any(this.sampleCount))
+          .apply(
+              "PropagateMetrics", ParDo.of(new ProcessAndPropagateSampleMetrics(this.metricName)));
       return PDone.in(input.getPipeline());
     }
 
-    static class ProcessAndPropagateSampleMetrics
-            extends AbstractMetricsPropagation<List<Long>> {
+    static class ProcessAndPropagateSampleMetrics extends AbstractMetricsPropagation<List<Long>> {
 
       private final List<Long> latencies = Lists.newLinkedList();
       private Long lastSentMillisFromEpoch = 0L;
@@ -333,21 +320,18 @@ public abstract class MetricsHandler
       }
 
       void propagateMetricValues(Long currentTimestamp) {
-        var perc
-                = Quantiles
-                        .percentiles()
-                        .indexes(new int[]{1, 50, 95, 99, 100})
-                        .compute(this.latencies);
+        var perc =
+            Quantiles.percentiles().indexes(new int[] {1, 50, 95, 99, 100}).compute(this.latencies);
         this.propagateMetricPoint(
-                this.metrics.get(MetricsHandler.P50_METRIC_KEY), currentTimestamp, perc.get(50));
+            this.metrics.get(MetricsHandler.P50_METRIC_KEY), currentTimestamp, perc.get(50));
         this.propagateMetricPoint(
-                this.metrics.get(MetricsHandler.MIN_METRIC_KEY), currentTimestamp, perc.get(1));
+            this.metrics.get(MetricsHandler.MIN_METRIC_KEY), currentTimestamp, perc.get(1));
         this.propagateMetricPoint(
-                this.metrics.get(MetricsHandler.P95_METRIC_KEY), currentTimestamp, perc.get(95));
+            this.metrics.get(MetricsHandler.P95_METRIC_KEY), currentTimestamp, perc.get(95));
         this.propagateMetricPoint(
-                this.metrics.get(MetricsHandler.P99_METRIC_KEY), currentTimestamp, perc.get(99));
+            this.metrics.get(MetricsHandler.P99_METRIC_KEY), currentTimestamp, perc.get(99));
         this.propagateMetricPoint(
-                this.metrics.get(MetricsHandler.MAX_METRIC_KEY), currentTimestamp, perc.get(100));
+            this.metrics.get(MetricsHandler.MAX_METRIC_KEY), currentTimestamp, perc.get(100));
         this.latencies.clear();
         this.lastSentMillisFromEpoch = currentTimestamp;
       }
@@ -370,8 +354,7 @@ public abstract class MetricsHandler
     }
   }
 
-  public static class PercentileComputation
-          extends MetricsHandler {
+  public static class PercentileComputation extends MetricsHandler {
 
     private PercentileComputation(String metricName) {
       super(metricName);
@@ -385,24 +368,22 @@ public abstract class MetricsHandler
     @Override
     public PDone expand(PCollection<List<Long>> input) {
       input
-              .apply("MapToLong", Flatten.iterables())
-              .apply(this.maxPaneSeconds + "secPanes",
-                      Window.<Long>into(new GlobalWindows())
-                              .triggering(this.getTrigger())
-                              .withAllowedLateness(Duration.ZERO)
-                              .discardingFiredPanes())
-              .apply("CalculatePercentileOnWindow",
-                      Combine.globally(
-                              ApproximateQuantiles.ApproximateQuantilesCombineFn
-                                      .<Long>create(101))
-                              .withFanout(this.combineFanout))
-              .apply("PropagateMetrics",
-                      ParDo.of(new PropagateDistributionMetrics(this.metricName)));
+          .apply("MapToLong", Flatten.iterables())
+          .apply(
+              this.maxPaneSeconds + "secPanes",
+              Window.<Long>into(new GlobalWindows())
+                  .triggering(this.getTrigger())
+                  .withAllowedLateness(Duration.ZERO)
+                  .discardingFiredPanes())
+          .apply(
+              "CalculatePercentileOnWindow",
+              Combine.globally(ApproximateQuantiles.ApproximateQuantilesCombineFn.<Long>create(101))
+                  .withFanout(this.combineFanout))
+          .apply("PropagateMetrics", ParDo.of(new PropagateDistributionMetrics(this.metricName)));
       return PDone.in((Pipeline) input.getPipeline());
     }
 
-    static class PropagateDistributionMetrics
-            extends AbstractMetricsPropagation<List<Long>> {
+    static class PropagateDistributionMetrics extends AbstractMetricsPropagation<List<Long>> {
 
       public PropagateDistributionMetrics(String name) {
         super(name);
@@ -415,21 +396,28 @@ public abstract class MetricsHandler
         }
         long currentTime = Instant.now().getMillis();
         this.propagateMetricPoint(
-                this.metrics.get(MetricsHandler.P50_METRIC_KEY), currentTime, context.element().get(50));
+            this.metrics.get(MetricsHandler.P50_METRIC_KEY),
+            currentTime,
+            context.element().get(50));
         this.propagateMetricPoint(
-                this.metrics.get(MetricsHandler.P95_METRIC_KEY), currentTime, context.element().get(95));
+            this.metrics.get(MetricsHandler.P95_METRIC_KEY),
+            currentTime,
+            context.element().get(95));
         this.propagateMetricPoint(
-                this.metrics.get(MetricsHandler.P99_METRIC_KEY), currentTime, context.element().get(99));
+            this.metrics.get(MetricsHandler.P99_METRIC_KEY),
+            currentTime,
+            context.element().get(99));
         this.propagateMetricPoint(
-                this.metrics.get(MetricsHandler.MIN_METRIC_KEY), currentTime, context.element().get(0));
+            this.metrics.get(MetricsHandler.MIN_METRIC_KEY), currentTime, context.element().get(0));
         this.propagateMetricPoint(
-                this.metrics.get(MetricsHandler.MAX_METRIC_KEY), currentTime, context.element().get(100));
+            this.metrics.get(MetricsHandler.MAX_METRIC_KEY),
+            currentTime,
+            context.element().get(100));
       }
     }
   }
 
-  public static class NoOpHandler
-          extends MetricsHandler {
+  public static class NoOpHandler extends MetricsHandler {
 
     private NoOpHandler() {
       super("noop");
@@ -437,14 +425,15 @@ public abstract class MetricsHandler
 
     @Override
     public PDone expand(PCollection<List<Long>> input) {
-      input.apply("NOOP", ParDo.of(new DoFn<List<Long>, Void>() {
+      input.apply(
+          "NOOP",
+          ParDo.of(
+              new DoFn<List<Long>, Void>() {
 
-        @ProcessElement
-        public void process(ProcessContext context) {
-        }
-      }));
+                @ProcessElement
+                public void process(ProcessContext context) {}
+              }));
       return PDone.in(input.getPipeline());
     }
   }
-
 }

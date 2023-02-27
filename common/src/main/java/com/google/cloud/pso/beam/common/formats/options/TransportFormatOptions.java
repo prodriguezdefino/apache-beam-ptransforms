@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -21,9 +21,7 @@ import org.apache.beam.sdk.options.DefaultValueFactory;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 
-/**
- * A collection of options needed to define the configuration for transport formats.
- */
+/** A collection of options needed to define the configuration for transport formats. */
 public interface TransportFormatOptions extends PipelineOptions {
 
   @Description("FQCN of the type the pipeline will ingest, sets EventFormat as THRIFT.")
@@ -32,28 +30,29 @@ public interface TransportFormatOptions extends PipelineOptions {
 
   void setThriftClassName(String value);
 
-  @Description("The Avro schema file used to deserialize the payload from the event, "
+  @Description(
+      "The Avro schema file used to deserialize the payload from the event, "
           + "sets EventFormat as AVRO. Takes precedence over other settings in this options.")
   @Default.String("")
   String getAvroSchemaLocation();
 
   void setAvroSchemaLocation(String value);
 
-  @Description("The identified EventFormat for the pipeline's data. Tipically "
+  @Description(
+      "The identified EventFormat for the pipeline's data. Tipically "
           + "this would be automatically configured based on the other options set at launch.")
   @Default.InstanceFactory(TransportFormatFactory.class)
   TransportFormats.Format getTransportFormat();
 
   void setTransportFormat(TransportFormats.Format value);
 
-  static class TransportFormatFactory
-          implements DefaultValueFactory<TransportFormats.Format> {
+  static class TransportFormatFactory implements DefaultValueFactory<TransportFormats.Format> {
 
     @Override
     public TransportFormats.Format create(PipelineOptions options) {
       var eventOptions = options.as(TransportFormatOptions.class);
       if (eventOptions.getAvroSchemaLocation().isBlank()
-              || eventOptions.getAvroSchemaLocation().isEmpty()) {
+          || eventOptions.getAvroSchemaLocation().isEmpty()) {
         return TransportFormats.Format.THRIFT;
       } else {
         return TransportFormats.Format.AVRO;

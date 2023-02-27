@@ -26,11 +26,10 @@ import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.CustomCoder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesAndMessageIdCoder;
 
-public class PubSubTransportCoder
-        extends CustomCoder<PubSubTransport> {
+public class PubSubTransportCoder extends CustomCoder<PubSubTransport> {
 
-  static final PubsubMessageWithAttributesAndMessageIdCoder CODER
-          = PubsubMessageWithAttributesAndMessageIdCoder.of();
+  static final PubsubMessageWithAttributesAndMessageIdCoder CODER =
+      PubsubMessageWithAttributesAndMessageIdCoder.of();
 
   public static PubSubTransportCoder of() {
     return new PubSubTransportCoder();
@@ -38,7 +37,7 @@ public class PubSubTransportCoder
 
   @Override
   public void encode(PubSubTransport value, OutputStream outStream)
-          throws CoderException, IOException {
+      throws CoderException, IOException {
     CODER.encode(((PubSubTransport) value).getMessage(), outStream);
   }
 

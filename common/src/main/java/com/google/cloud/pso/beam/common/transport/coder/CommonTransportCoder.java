@@ -28,16 +28,14 @@ import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.values.TypeDescriptor;
 
-/**
- * A simple coder for the common transport.
- */
+/** A simple coder for the common transport. */
 public class CommonTransportCoder extends CustomCoder<CommonTransport> {
 
   // A message's payload cannot be null
   private static final Coder<byte[]> DATA_CODER = ByteArrayCoder.of();
   // A message's attributes can be null.
-  private static final Coder<Map<String, String>> HEADERS_CODER
-          = NullableCoder.of(MapCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+  private static final Coder<Map<String, String>> HEADERS_CODER =
+      NullableCoder.of(MapCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
   // A message's messageId may be null at some moments in the execution
   private static final Coder<String> ID_CODER = NullableCoder.of(StringUtf8Coder.of());
 

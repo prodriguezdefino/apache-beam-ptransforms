@@ -20,19 +20,16 @@ import com.google.cloud.pso.beam.common.transport.EventTransport;
 import java.time.Instant;
 import java.util.HashMap;
 
-/**
- * A custom UDF that decides on a positive sentiment based on the page score.
- */
+/** A custom UDF that decides on a positive sentiment based on the page score. */
 public class CustomUDF implements UDF {
 
   @Override
   public EventTransport apply(EventTransport event) throws RuntimeException {
 
     var newAttributes = new HashMap<String, String>(event.getHeaders());
-    // we can add the execution time 
+    // we can add the execution time
     newAttributes.put("udfExecTimestamp", Instant.now().toString());
 
     return new CommonTransport(event.getId(), newAttributes, event.getData());
   }
-
 }

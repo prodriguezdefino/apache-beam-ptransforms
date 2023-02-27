@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,20 +15,35 @@
  */
 package com.google.cloud.pso.beam.transforms.kafka;
 
-public class SASLSSLConfig
-        extends KafkaConfig {
+public class SASLSSLConfig extends KafkaConfig {
 
   final String keytabId;
   final String trutstoreId;
   final String kerberosPrincipal;
   final String kerberosRealm;
 
-  public SASLSSLConfig(String keytabId, String trutstoreId, String kerberosPrincipal,
-          String groupId, Integer partitionMaxFetchSize, Boolean autoCommit,
-          Integer defaultAPITimeout, Boolean isSecureAccessEnabled, String projectId,
-          String bootstrapServers, String tssMaterialsRootFolder, String kerberosRealm) {
-    super(groupId, partitionMaxFetchSize, autoCommit, defaultAPITimeout,
-            isSecureAccessEnabled, projectId, bootstrapServers, tssMaterialsRootFolder);
+  public SASLSSLConfig(
+      String keytabId,
+      String trutstoreId,
+      String kerberosPrincipal,
+      String groupId,
+      Integer partitionMaxFetchSize,
+      Boolean autoCommit,
+      Integer defaultAPITimeout,
+      Boolean isSecureAccessEnabled,
+      String projectId,
+      String bootstrapServers,
+      String tssMaterialsRootFolder,
+      String kerberosRealm) {
+    super(
+        groupId,
+        partitionMaxFetchSize,
+        autoCommit,
+        defaultAPITimeout,
+        isSecureAccessEnabled,
+        projectId,
+        bootstrapServers,
+        tssMaterialsRootFolder);
     this.keytabId = keytabId;
     this.trutstoreId = trutstoreId;
     this.kerberosPrincipal = kerberosPrincipal;

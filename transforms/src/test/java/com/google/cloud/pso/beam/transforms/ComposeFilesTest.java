@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -44,13 +44,11 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-/**
- *
- */
+/** */
 public class ComposeFilesTest {
 
-  public static final String SCHEMA_STRING
-          = "{"
+  public static final String SCHEMA_STRING =
+      "{"
           + "\"type\":\"record\", "
           + "\"name\":\"testrecord\","
           + "\"fields\":["
@@ -59,29 +57,25 @@ public class ComposeFilesTest {
           + "  ]"
           + "}";
   public static final Schema SCHEMA = new Schema.Parser().parse(SCHEMA_STRING);
-  public static final String[] SCIENTISTS
-          = new String[]{
-            "Einstein", "Darwin", "Copernicus", "Pasteur", "Curie",
-            "Faraday", "Newton", "Bohr", "Galilei", "Maxwell"
-          };
+  public static final String[] SCIENTISTS =
+      new String[] {
+        "Einstein", "Darwin", "Copernicus", "Pasteur", "Curie",
+        "Faraday", "Newton", "Bohr", "Galilei", "Maxwell"
+      };
 
-  @Rule
-  public transient TestPipeline mainPipeline = TestPipeline.create();
-  @Rule
-  public transient TestPipeline testPipeline = TestPipeline.create();
-  @Rule
-  public transient TemporaryFolder temporaryFolder = new TemporaryFolder();
+  @Rule public transient TestPipeline mainPipeline = TestPipeline.create();
+  @Rule public transient TestPipeline testPipeline = TestPipeline.create();
+  @Rule public transient TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-  public ComposeFilesTest() {
-  }
+  public ComposeFilesTest() {}
 
   public static List<GenericRecord> generateGenericRecords(long count) {
     List<GenericRecord> data = new ArrayList<>();
     GenericRecordBuilder builder = new GenericRecordBuilder(SCHEMA);
     for (int i = 0; i < count; i++) {
       int index = i % SCIENTISTS.length;
-      GenericRecord record
-              = builder.set("name", SCIENTISTS[index]).set("id", Integer.toString(i)).build();
+      GenericRecord record =
+          builder.set("name", SCIENTISTS[index]).set("id", Integer.toString(i)).build();
       data.add(record);
     }
     return data;
@@ -93,76 +87,75 @@ public class ComposeFilesTest {
 
     // we will write 2 files in the temp directory
     mainPipeline
-            .apply(Create.of(records).withCoder(AvroCoder.of(SCHEMA)))
-            .apply(
-                    FileIO.<GenericRecord>write()
-                            .via(ParquetIO
-                                    .sink(SCHEMA)
-                                    .withCompressionCodec(CompressionCodecName.SNAPPY))
-                            .to(temporaryFolder.getRoot().getAbsolutePath())
-                            .withNumShards(2));
+        .apply(Create.of(records).withCoder(AvroCoder.of(SCHEMA)))
+        .apply(
+            FileIO.<GenericRecord>write()
+                .via(ParquetIO.sink(SCHEMA).withCompressionCodec(CompressionCodecName.SNAPPY))
+                .to(temporaryFolder.getRoot().getAbsolutePath())
+                .withNumShards(2));
 
     mainPipeline.run().waitUntilFinish();
 
     // create the context object needed for the DoFn test
-    List<String> resourceList = Arrays.asList(temporaryFolder.getRoot().list())
-            .stream()
+    List<String> resourceList =
+        Arrays.asList(temporaryFolder.getRoot().list()).stream()
             .map(fileStr -> temporaryFolder.getRoot().getAbsolutePath() + "/" + fileStr)
             .filter(absFileStr -> Paths.get(absFileStr).toFile().isFile())
             .collect(Collectors.toList());
 
-    String destinationPath = temporaryFolder.getRoot().getAbsolutePath() + "/compose-output.parquet";
+    String destinationPath =
+        temporaryFolder.getRoot().getAbsolutePath() + "/compose-output.parquet";
 
-    ComposeFiles.ExecComposeFiles<GenericRecord> cfiles
-            = new ComposeFiles.ExecComposeFiles<GenericRecord>()
-                    .withSinkProvider(
-                            () -> ParquetIO
-                                    .sink(SCHEMA)
-                                    .withCompressionCodec(CompressionCodecName.SNAPPY))
-                    .withComposeFunction(AvroUtils::composeParquetFiles);
+    ComposeFiles.ExecComposeFiles<GenericRecord> cfiles =
+        new ComposeFiles.ExecComposeFiles<GenericRecord>()
+            .withSinkProvider(
+                () -> ParquetIO.sink(SCHEMA).withCompressionCodec(CompressionCodecName.SNAPPY))
+            .withComposeFunction(AvroUtils::composeParquetFiles);
 
     // register coder for the test pipeline
-    testPipeline.getCoderRegistry().registerCoderForClass(
-            ComposeFiles.ComposeContext.class,
-            ComposeFiles.ComposeContextCoder.of());
+    testPipeline
+        .getCoderRegistry()
+        .registerCoderForClass(
+            ComposeFiles.ComposeContext.class, ComposeFiles.ComposeContextCoder.of());
 
-    PCollection<ComposeFiles.ComposeContext> ctxPC
-            = testPipeline
-                    .apply(Create.of(resourceList))
-                    // first match all the files to be processed
-                    .apply(FileIO.matchAll())
-                    // capture readable matches
-                    .apply(FileIO.readMatches())
-                    // create the compose context object
-                    .apply(WithKeys.of((Void) null))
-                    .apply(GroupByKey.create())
-                    .apply(MapElements
-                            .into(TypeDescriptor.of(ComposeFiles.ComposeContext.class))
-                            .via(readableFiles
-                                    -> ComposeFiles.ComposeContext.of(
-                                    1,
-                                    1,
-                                    null,
-                                    destinationPath,
-                                    StreamSupport
-                                            .stream(readableFiles.getValue().spliterator(), false)
-                                            .collect(Collectors.toList()))))
-                    // compose the files
-                    .apply(ParDo.of(cfiles));
+    PCollection<ComposeFiles.ComposeContext> ctxPC =
+        testPipeline
+            .apply(Create.of(resourceList))
+            // first match all the files to be processed
+            .apply(FileIO.matchAll())
+            // capture readable matches
+            .apply(FileIO.readMatches())
+            // create the compose context object
+            .apply(WithKeys.of((Void) null))
+            .apply(GroupByKey.create())
+            .apply(
+                MapElements.into(TypeDescriptor.of(ComposeFiles.ComposeContext.class))
+                    .via(
+                        readableFiles ->
+                            ComposeFiles.ComposeContext.of(
+                                1,
+                                1,
+                                null,
+                                destinationPath,
+                                StreamSupport.stream(readableFiles.getValue().spliterator(), false)
+                                    .collect(Collectors.toList()))))
+            // compose the files
+            .apply(ParDo.of(cfiles));
 
-    PAssert.that(ctxPC).satisfies(elem -> {
-      Assert.assertNotNull(elem);
-      List<ComposeFiles.ComposeContext> composeCtxs
-              = StreamSupport.stream(elem.spliterator(), false).collect(Collectors.toList());
-      Assert.assertEquals(1, composeCtxs.size());
-      ComposeFiles.ComposeContext composeCtx = composeCtxs.get(0);
-      File output = Paths.get(destinationPath).toFile();
-      Assert.assertEquals(output.isFile(), true);
-      Assert.assertTrue("Output file should not be empty.", 0 <= output.length());
-      return null;
-    });
+    PAssert.that(ctxPC)
+        .satisfies(
+            elem -> {
+              Assert.assertNotNull(elem);
+              List<ComposeFiles.ComposeContext> composeCtxs =
+                  StreamSupport.stream(elem.spliterator(), false).collect(Collectors.toList());
+              Assert.assertEquals(1, composeCtxs.size());
+              ComposeFiles.ComposeContext composeCtx = composeCtxs.get(0);
+              File output = Paths.get(destinationPath).toFile();
+              Assert.assertEquals(output.isFile(), true);
+              Assert.assertTrue("Output file should not be empty.", 0 <= output.length());
+              return null;
+            });
 
     testPipeline.run().waitUntilFinish();
   }
-
 }

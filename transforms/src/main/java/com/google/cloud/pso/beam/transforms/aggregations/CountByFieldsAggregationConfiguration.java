@@ -20,9 +20,7 @@ import com.google.cloud.pso.beam.common.formats.TransportFormats;
 import java.io.Serializable;
 import java.util.List;
 
-/**
- *
- */
+/** */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 public class CountByFieldsAggregationConfiguration implements Serializable {
 
@@ -31,8 +29,8 @@ public class CountByFieldsAggregationConfiguration implements Serializable {
   final String avroSchema;
   final List<String> keyFields;
 
-  public CountByFieldsAggregationConfiguration(TransportFormats.Format format, String className,
-          String avroSchema, List<String> keyFields) {
+  public CountByFieldsAggregationConfiguration(
+      TransportFormats.Format format, String className, String avroSchema, List<String> keyFields) {
     this.format = format;
     this.className = className;
     this.avroSchema = avroSchema;
@@ -54,5 +52,4 @@ public class CountByFieldsAggregationConfiguration implements Serializable {
   public List<String> getKeyFields() {
     return keyFields;
   }
-
 }

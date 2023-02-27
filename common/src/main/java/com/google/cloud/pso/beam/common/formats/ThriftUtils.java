@@ -24,15 +24,13 @@ import org.apache.thrift.meta_data.FieldMetaData;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TTransportException;
 
-/**
- *
- */
+/** */
 public class ThriftUtils {
 
   public static Class<? extends TBase<?, ?>> retrieveThriftClass(String className) {
     try {
-      return (Class<? extends TBase<?, ?>>) Class.forName(
-              className, true, Thread.currentThread().getContextClassLoader());
+      return (Class<? extends TBase<?, ?>>)
+          Class.forName(className, true, Thread.currentThread().getContextClassLoader());
     } catch (ClassNotFoundException ex) {
       throw new RuntimeException("Thrift class " + className + " was not found", ex);
     }
@@ -40,7 +38,8 @@ public class ThriftUtils {
 
   public static Class<? extends TFieldIdEnum> retrieveThirftFieldEnum(String className) {
     try {
-      return (Class<? extends TFieldIdEnum>) Class.forName(
+      return (Class<? extends TFieldIdEnum>)
+          Class.forName(
               className + "$_Fields", true, Thread.currentThread().getContextClassLoader());
     } catch (ClassNotFoundException ex) {
       throw new RuntimeException("Thrift class " + className + " was not found", ex);
@@ -62,15 +61,14 @@ public class ThriftUtils {
   public static FieldMetaData validateFieldAndReturn(TBase element, String propertyName) {
     var clazz = (Class<? extends TBase>) element.getClass();
     return ((Map<? extends TBase, FieldMetaData>) FieldMetaData.getStructMetaDataMap(clazz))
-            .values()
-            .stream()
+        .values().stream()
             .filter(f -> f.fieldName.equals(propertyName))
             .findFirst()
             .orElseThrow(
-                    () -> new IllegalArgumentException(
-                            "Provided property name does not exists in the type "
+                () ->
+                    new IllegalArgumentException(
+                        "Provided property name does not exists in the type "
                             + "as a simple value (structs, composite or "
                             + "collection types are not supported)."));
   }
-
 }

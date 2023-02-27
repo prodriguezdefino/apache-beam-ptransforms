@@ -25,9 +25,7 @@ import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.values.TypeDescriptor;
 
-/**
- * A simple coder for the common error transport.
- */
+/** A simple coder for the common error transport. */
 public class CommonErrorTransportCoder extends CustomCoder<CommonErrorTransport> {
 
   // The message can be nullable

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -20,10 +20,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.io.Serializable;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
-@JsonSubTypes(value = {
-  @JsonSubTypes.Type(value = SASLSSLConfig.class, name = "saslsslconfig")})
-public class KafkaConfig
-        implements Serializable {
+@JsonSubTypes(value = {@JsonSubTypes.Type(value = SASLSSLConfig.class, name = "saslsslconfig")})
+public class KafkaConfig implements Serializable {
 
   final String groupId;
   final Integer partitionMaxFetchSize;
@@ -34,9 +32,15 @@ public class KafkaConfig
   final String bootstrapServers;
   final String keysRootFolder;
 
-  public KafkaConfig(String groupId, Integer partitionMaxFetchSize, Boolean autoCommit,
-          Integer defaultAPITimeout, Boolean isSecureAccessEnabled, String projectId,
-          String bootstrapServers, String keysRootFolder) {
+  public KafkaConfig(
+      String groupId,
+      Integer partitionMaxFetchSize,
+      Boolean autoCommit,
+      Integer defaultAPITimeout,
+      Boolean isSecureAccessEnabled,
+      String projectId,
+      String bootstrapServers,
+      String keysRootFolder) {
     this.groupId = groupId;
     this.partitionMaxFetchSize = partitionMaxFetchSize;
     this.autoCommit = autoCommit;

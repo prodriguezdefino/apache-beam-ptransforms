@@ -19,28 +19,30 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Simple implementation for an ErrorTransport
- */
+/** Simple implementation for an ErrorTransport */
 public class CommonErrorTransport extends CommonTransport implements ErrorTransport {
 
   private final String serializedCause;
   private final String errorMessage;
 
-  public CommonErrorTransport(String id, Map<String, String> headers, byte[] data,
-          Throwable cause, String errorMessage) {
+  public CommonErrorTransport(
+      String id, Map<String, String> headers, byte[] data, Throwable cause, String errorMessage) {
     super(id, headers, data);
-    this.serializedCause
-            = cause.getMessage()
+    this.serializedCause =
+        cause.getMessage()
             + "\n"
             + Arrays.stream(cause.getStackTrace())
-                    .map(se -> se.toString())
-                    .collect(Collectors.joining("\n"));
+                .map(se -> se.toString())
+                .collect(Collectors.joining("\n"));
     this.errorMessage = errorMessage;
   }
 
-  public CommonErrorTransport(String id, Map<String, String> headers, byte[] data,
-          String serializedCause, String errorMessage) {
+  public CommonErrorTransport(
+      String id,
+      Map<String, String> headers,
+      byte[] data,
+      String serializedCause,
+      String errorMessage) {
     super(id, headers, data);
     this.serializedCause = serializedCause;
     this.errorMessage = errorMessage;
@@ -58,11 +60,11 @@ public class CommonErrorTransport extends CommonTransport implements ErrorTransp
 
   public static CommonErrorTransport of(EventTransport transport, String message, Throwable cause) {
     return new CommonErrorTransport(
-            transport.getId(), transport.getHeaders(), transport.getData(), cause, message);
+        transport.getId(), transport.getHeaders(), transport.getData(), cause, message);
   }
 
   public static CommonErrorTransport of(EventTransport transport, String message, String cause) {
     return new CommonErrorTransport(
-            transport.getId(), transport.getHeaders(), transport.getData(), cause, message);
+        transport.getId(), transport.getHeaders(), transport.getData(), cause, message);
   }
 }

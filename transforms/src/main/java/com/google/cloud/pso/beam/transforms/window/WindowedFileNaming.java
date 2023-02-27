@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -41,7 +41,8 @@ public class WindowedFileNaming implements FileIO.Write.FileNaming {
   private Boolean flatNamingStructure = false;
   private Boolean hourlyPathNamingStructure = false;
 
-  public WindowedFileNaming(ValueProvider<String> filePrefix, ValueProvider<String> fileSuffix, String exec) {
+  public WindowedFileNaming(
+      ValueProvider<String> filePrefix, ValueProvider<String> fileSuffix, String exec) {
     this.filePrefix = filePrefix;
     this.fileSuffix = fileSuffix;
     this.exec = exec;
@@ -71,14 +72,14 @@ public class WindowedFileNaming implements FileIO.Write.FileNaming {
   }
 
   @Override
-  public String getFilename(BoundedWindow window, PaneInfo pane, int numShards, int shardIndex, Compression compression) {
-    var outputPrefix
-            = Optional
-                    .ofNullable(window)
-                    .map(w -> w instanceof IntervalWindow ? (IntervalWindow) w : null)
-                    .map(w -> w.maxTimestamp().toDateTime())
-                    .map(time -> buildOutputPrefixPath(time))
-                    .orElse("");
+  public String getFilename(
+      BoundedWindow window, PaneInfo pane, int numShards, int shardIndex, Compression compression) {
+    var outputPrefix =
+        Optional.ofNullable(window)
+            .map(w -> w instanceof IntervalWindow ? (IntervalWindow) w : null)
+            .map(w -> w.maxTimestamp().toDateTime())
+            .map(time -> buildOutputPrefixPath(time))
+            .orElse("");
 
     var fileNameSB = new StringBuilder(outputPrefix);
 
@@ -87,12 +88,20 @@ public class WindowedFileNaming implements FileIO.Write.FileNaming {
     }
 
     if ((flatNamingStructure || hourlyPathNamingStructure) && window != null) {
-      fileNameSB.append("-window-").append(Utilities.formatFilenameWindowComponent(window.maxTimestamp().toDateTime()));
+      fileNameSB
+          .append("-window-")
+          .append(Utilities.formatFilenameWindowComponent(window.maxTimestamp().toDateTime()));
     }
 
-    fileNameSB.append("-pane-").append(pane.getIndex())
-            .append("-shard-").append(shardIndex).append("-of-").append(numShards)
-            .append("-exec-").append(exec);
+    fileNameSB
+        .append("-pane-")
+        .append(pane.getIndex())
+        .append("-shard-")
+        .append(shardIndex)
+        .append("-of-")
+        .append(numShards)
+        .append("-exec-")
+        .append(exec);
 
     if (!fileSuffix.get().isEmpty()) {
       fileNameSB.append(fileSuffix.get());
@@ -105,5 +114,4 @@ public class WindowedFileNaming implements FileIO.Write.FileNaming {
     LOG.debug("Windowed file name policy created: {}", fileNameSB.toString());
     return fileNameSB.toString();
   }
-
 }

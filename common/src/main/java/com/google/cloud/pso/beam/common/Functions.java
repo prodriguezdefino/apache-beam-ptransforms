@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -24,8 +24,7 @@ import org.apache.beam.sdk.io.FileIO;
 public class Functions {
 
   @FunctionalInterface
-  public interface SerializableProvider<OutputT>
-          extends Serializable {
+  public interface SerializableProvider<OutputT> extends Serializable {
 
     /**
      * Returns the result of invoking this function on the given input.
@@ -52,7 +51,7 @@ public class Functions {
      * @param composePartLocations an iterable with the location of all the compose part files
      * @return True in case the compose file was successfully written, false otherwise.
      */
-    Boolean apply(SinkT sink, String composeDestination, Iterable<FileIO.ReadableFile> composePartLocations);
+    Boolean apply(
+        SinkT sink, String composeDestination, Iterable<FileIO.ReadableFile> composePartLocations);
   }
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -22,8 +22,7 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 
-public interface KafkaSASLSSLOptions
-        extends KafkaOptions {
+public interface KafkaSASLSSLOptions extends KafkaOptions {
 
   @Description("The keytab id on SecretManager")
   ValueProvider<String> getSecretManagerKeyTabId();
@@ -59,8 +58,7 @@ public interface KafkaSASLSSLOptions
 
   void setSASLSSLConfig(SASLSSLConfig var1);
 
-  static class KafkaConfigFactory
-          implements DefaultValueFactory<SASLSSLConfig> {
+  static class KafkaConfigFactory implements DefaultValueFactory<SASLSSLConfig> {
 
     @Override
     public SASLSSLConfig create(PipelineOptions options) {
@@ -69,18 +67,18 @@ public interface KafkaSASLSSLOptions
       }
       var opts = options.as(KafkaSASLSSLOptions.class);
       return new SASLSSLConfig(
-              opts.getSecretManagerKeyTabId().get(),
-              opts.getSecretManagerTrustStoreId().get(),
-              opts.getKerberosPrincipalName(),
-              opts.getConsumerGroupId().get(),
-              opts.getPartitionMaxFetchSize(),
-              opts.isKafkaAutocommitEnabled(),
-              opts.getDefaultApiTimeoutMs(),
-              opts.isKafkaSASLSSLEnabled(),
-              opts.getSecretManagerProjectId().get(),
-              opts.getBootstrapServers().get(),
-              opts.getKeysRootFolder(),
-              opts.getKerberosRealm());
+          opts.getSecretManagerKeyTabId().get(),
+          opts.getSecretManagerTrustStoreId().get(),
+          opts.getKerberosPrincipalName(),
+          opts.getConsumerGroupId().get(),
+          opts.getPartitionMaxFetchSize(),
+          opts.isKafkaAutocommitEnabled(),
+          opts.getDefaultApiTimeoutMs(),
+          opts.isKafkaSASLSSLEnabled(),
+          opts.getSecretManagerProjectId().get(),
+          opts.getBootstrapServers().get(),
+          opts.getKeysRootFolder(),
+          opts.getKerberosRealm());
     }
   }
 }

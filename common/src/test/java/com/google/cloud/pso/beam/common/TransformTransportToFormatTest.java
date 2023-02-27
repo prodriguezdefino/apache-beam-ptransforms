@@ -1,4 +1,21 @@
+/*
+ * Copyright (C) 2023 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.pso.beam.common;
+
+import static org.junit.Assert.*;
 
 import com.google.cloud.pso.beam.common.formats.AvroUtils;
 import com.google.cloud.pso.beam.common.formats.ThriftUtils;
@@ -16,19 +33,13 @@ import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.junit.Test;
-import static org.junit.Assert.*;
 
-/**
- *
- */
+/** */
 public class TransformTransportToFormatTest {
 
-  public TransformTransportToFormatTest() {
-  }
+  public TransformTransportToFormatTest() {}
 
-  /**
-   * Test of retrieveRowSchema method, of class PrepareBQIngestion.
-   */
+  /** Test of retrieveRowSchema method, of class PrepareBQIngestion. */
   @Test
   public void testRetrieveRowSchema() {
     String className = "com.google.cloud.pso.beam.generator.thrift.Message";
@@ -36,9 +47,7 @@ public class TransformTransportToFormatTest {
     assertNotNull(result);
   }
 
-  /**
-   * Test of retrieveAvroSchema method, of class PrepareBQIngestion.
-   */
+  /** Test of retrieveAvroSchema method, of class PrepareBQIngestion. */
   @Test
   public void testRetrieveAvroSchema() throws Exception {
     var className = "com.google.cloud.pso.beam.generator.thrift.Message";
@@ -46,9 +55,7 @@ public class TransformTransportToFormatTest {
     assertNotNull(result);
   }
 
-  /**
-   * Test of retrieveThriftClass method, of class PrepareBQIngestion.
-   */
+  /** Test of retrieveThriftClass method, of class PrepareBQIngestion. */
   @Test
   public void testRetrieveThriftClass() throws Exception {
     var className = "com.google.cloud.pso.beam.generator.thrift.Message";
@@ -79,13 +86,14 @@ public class TransformTransportToFormatTest {
     topic.setId("some other id");
     topic.setName("topic name");
     topic.setValue(random.nextLong());
-    
+
     message.setTopic(topic);
 
     var thriftData = getBytesFromThriftObject(message);
     var transport = new CommonTransport("someid", new HashMap<>(), thriftData);
 
-    var row = TransformTransportToFormat.retrieveRowFromTransport(
+    var row =
+        TransformTransportToFormat.retrieveRowFromTransport(
             transport, TransportFormats.Format.THRIFT, thriftClass, beamSchema, avroSchema);
 
     assertNotNull(row);
@@ -104,5 +112,4 @@ public class TransformTransportToFormatTest {
       throw new RuntimeException("Can't serialize instance.", ex);
     }
   }
-
 }

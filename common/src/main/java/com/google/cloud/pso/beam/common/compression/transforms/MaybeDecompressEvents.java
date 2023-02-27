@@ -44,17 +44,14 @@ import org.slf4j.LoggerFactory;
  * configured compression method.
  */
 public class MaybeDecompressEvents
-        extends PTransform<PCollection<? extends EventTransport>, PCollectionTuple> {
+    extends PTransform<PCollection<? extends EventTransport>, PCollectionTuple> {
 
-  public static final TupleTag<CommonTransport> SUCCESSFULLY_PROCESSED_EVENTS = new TupleTag<>() {
-  };
-  public static final TupleTag<ErrorTransport> FAILED_EVENTS = new TupleTag<>() {
-  };
+  public static final TupleTag<CommonTransport> SUCCESSFULLY_PROCESSED_EVENTS = new TupleTag<>() {};
+  public static final TupleTag<ErrorTransport> FAILED_EVENTS = new TupleTag<>() {};
 
   private static final Logger LOG = LoggerFactory.getLogger(MaybeDecompressEvents.class);
 
-  MaybeDecompressEvents() {
-  }
+  MaybeDecompressEvents() {}
 
   public static MaybeDecompressEvents create() {
     return new MaybeDecompressEvents();
@@ -62,15 +59,22 @@ public class MaybeDecompressEvents
 
   @Override
   public PCollectionTuple expand(PCollection<? extends EventTransport> input) {
-    input.getPipeline().getCoderRegistry().registerCoderForClass(
-            CommonTransport.class, CommonTransportCoder.of());
-    input.getPipeline().getCoderRegistry().registerCoderForClass(
-            CommonErrorTransport.class, CommonErrorTransportCoder.of());
-    input.getPipeline().getCoderRegistry().registerCoderForClass(
-            ErrorTransport.class, CommonErrorTransportCoder.of());
-    return input.apply("CheckHeadersAndDecompressIfPresent",
-            ParDo.of(new CheckForDecompression())
-                    .withOutputTags(SUCCESSFULLY_PROCESSED_EVENTS, TupleTagList.of(FAILED_EVENTS)));
+    input
+        .getPipeline()
+        .getCoderRegistry()
+        .registerCoderForClass(CommonTransport.class, CommonTransportCoder.of());
+    input
+        .getPipeline()
+        .getCoderRegistry()
+        .registerCoderForClass(CommonErrorTransport.class, CommonErrorTransportCoder.of());
+    input
+        .getPipeline()
+        .getCoderRegistry()
+        .registerCoderForClass(ErrorTransport.class, CommonErrorTransportCoder.of());
+    return input.apply(
+        "CheckHeadersAndDecompressIfPresent",
+        ParDo.of(new CheckForDecompression())
+            .withOutputTags(SUCCESSFULLY_PROCESSED_EVENTS, TupleTagList.of(FAILED_EVENTS)));
   }
 
   static class CheckForDecompression extends DoFn<EventTransport, CommonTransport> {
@@ -79,40 +83,41 @@ public class MaybeDecompressEvents
     public void processElement(ProcessContext context) {
       try {
         if (!CompressionUtils.CompressionType.shouldDecompress(
-                context.element().getHeaders().get(
-                        CompressionUtils.COMPRESSION_TYPE_HEADER_KEY))) {
+            context.element().getHeaders().get(CompressionUtils.COMPRESSION_TYPE_HEADER_KEY))) {
           context.output(SUCCESSFULLY_PROCESSED_EVENTS, CommonTransport.of(context.element()));
           return;
         }
         switch (CompressionUtils.CompressionType.valueOf(
-                context.element().getHeaders().get(
-                        CompressionUtils.COMPRESSION_TYPE_HEADER_KEY))) {
+            context.element().getHeaders().get(CompressionUtils.COMPRESSION_TYPE_HEADER_KEY))) {
           case AVRO_SNAPPY:
             throw new RuntimeException("Avro compression is not implemented yet");
-          case THRIFT_ZLIB: {
-            try {
-              var envelope = Optional.ofNullable(
-                      ThriftCompression.decompressEnvelope(context.element().getData()));
-              envelope
-                      .map(Envelope::getElements)
-                      .orElse(Lists.newArrayList())
-                      .forEach(
-                              element
-                              -> context.output(
-                                      SUCCESSFULLY_PROCESSED_EVENTS,
-                                      new CommonTransport(
-                                              UUID.randomUUID().toString(),
-                                              element.getHeaders(),
-                                              element.getData())));
-            } catch (TException ex) {
-              LOG.error("Can't decompress payload, bailing for now.", ex);
+          case THRIFT_ZLIB:
+            {
+              try {
+                var envelope =
+                    Optional.ofNullable(
+                        ThriftCompression.decompressEnvelope(context.element().getData()));
+                envelope
+                    .map(Envelope::getElements)
+                    .orElse(Lists.newArrayList())
+                    .forEach(
+                        element ->
+                            context.output(
+                                SUCCESSFULLY_PROCESSED_EVENTS,
+                                new CommonTransport(
+                                    UUID.randomUUID().toString(),
+                                    element.getHeaders(),
+                                    element.getData())));
+              } catch (TException ex) {
+                LOG.error("Can't decompress payload, bailing for now.", ex);
+              }
+              break;
             }
-            break;
-          }
-          default: {
-            LOG.warn("we shouldn't have arrived here, lets continue the pipeline :shrugs:");
-            context.output(SUCCESSFULLY_PROCESSED_EVENTS, CommonTransport.of(context.element()));
-          }
+          default:
+            {
+              LOG.warn("we shouldn't have arrived here, lets continue the pipeline :shrugs:");
+              context.output(SUCCESSFULLY_PROCESSED_EVENTS, CommonTransport.of(context.element()));
+            }
         }
       } catch (Exception ex) {
         var msg = "Errors occurred while trying to decompress the transport payload.";

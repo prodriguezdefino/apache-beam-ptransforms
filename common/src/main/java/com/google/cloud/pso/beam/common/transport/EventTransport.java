@@ -22,7 +22,6 @@ import org.joda.time.Instant;
 /**
  * A transport interface that should cover the needed methods to move data between sources and
  * sinks.
- *
  */
 public interface EventTransport {
 
@@ -44,10 +43,9 @@ public interface EventTransport {
    * @return Optional with potentially a value of millis since epoch
    */
   default Optional<Long> getEventEpochInMillis() {
-    return Optional
-            .ofNullable(this.getHeaders().get(EVENT_TIME_KEY))
-            .map(EventTransport::fromStringTimestamp)
-            .orElse(Optional.empty());
+    return Optional.ofNullable(this.getHeaders().get(EVENT_TIME_KEY))
+        .map(EventTransport::fromStringTimestamp)
+        .orElse(Optional.empty());
   }
 
   static Optional<Long> fromStringTimestamp(String stringTimestamp) {

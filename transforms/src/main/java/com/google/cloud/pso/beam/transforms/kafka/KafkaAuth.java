@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -47,9 +47,12 @@ public class KafkaAuth {
 
   static String getJAASConfigTxt(SASLSSLConfig saslSSLConfig) {
     return "com.sun.security.auth.module.Krb5LoginModule required principal=\""
-            + saslSSLConfig.kerberosPrincipal + "@" + saslSSLConfig.kerberosRealm
-            + "\" debug=true useKeyTab=true storeKey=true keyTab=\""
-            + KafkaAuth.getKeytabLocation(saslSSLConfig) + "\" doNotPrompt=true;";
+        + saslSSLConfig.kerberosPrincipal
+        + "@"
+        + saslSSLConfig.kerberosRealm
+        + "\" debug=true useKeyTab=true storeKey=true keyTab=\""
+        + KafkaAuth.getKeytabLocation(saslSSLConfig)
+        + "\" doNotPrompt=true;";
   }
 
   public static void setupKeyTabOnWorker(SASLSSLConfig saslSSLConfig) {
@@ -60,14 +63,17 @@ public class KafkaAuth {
 
   public static void setupTrustStoreOnWorker(SASLSSLConfig saslSSLConfig) {
     var location = KafkaAuth.getTruststoreLocation(saslSSLConfig);
-    LOG.debug("writing file with decoded key {} on location {}", saslSSLConfig.trutstoreId, location);
+    LOG.debug(
+        "writing file with decoded key {} on location {}", saslSSLConfig.trutstoreId, location);
     KafkaAuth.setupMaterialOnWorker(location, saslSSLConfig.projectId, saslSSLConfig.trutstoreId);
   }
 
   public static void setupKerberosConfigFile(String location) {
     try {
-      var configContent = Resources.toString(Resources.getResource(
-              KERBEROS_CONFIG_FILE_TEMPLATE_LOCATION), Charset.defaultCharset());
+      var configContent =
+          Resources.toString(
+              Resources.getResource(KERBEROS_CONFIG_FILE_TEMPLATE_LOCATION),
+              Charset.defaultCharset());
       LOG.debug("writing keberos config file {} \n on location {}.", configContent, location);
       KafkaAuth.setupFileOnWorkerFS(location, () -> configContent.getBytes());
     } catch (IOException ex) {
@@ -75,9 +81,10 @@ public class KafkaAuth {
     }
   }
 
-  static void setupMaterialOnWorker(String location, String materialGCPProjectId, String materialKey) {
-    KafkaAuth.setupFileOnWorkerFS(location,
-            () -> KafkaAuth.retrieveSecretValue(materialGCPProjectId, materialKey));
+  static void setupMaterialOnWorker(
+      String location, String materialGCPProjectId, String materialKey) {
+    KafkaAuth.setupFileOnWorkerFS(
+        location, () -> KafkaAuth.retrieveSecretValue(materialGCPProjectId, materialKey));
   }
 
   static synchronized void setupFileOnWorkerFS(String location, Supplier<byte[]> fileContent) {
@@ -110,7 +117,7 @@ public class KafkaAuth {
   }
 
   public static Map<String, Object> populateAuthConfigProperties(
-          Map<String, Object> config, SASLSSLConfig saslSSLConfig) {
+      Map<String, Object> config, SASLSSLConfig saslSSLConfig) {
     config.put("security.protocol", SecurityProtocol.SASL_SSL.toString());
     config.put("sasl.mechanism", "GSSAPI");
     config.put("sasl.kerberos.service.name", "kafka");
@@ -122,14 +129,16 @@ public class KafkaAuth {
 
   public static String ipAddressFormForBootstrapServers(String bootstrapServers) {
     return Arrays.stream(bootstrapServers.split(","))
-            .map(s -> {
+        .map(
+            s -> {
               String[] server = s.split(":");
               try {
                 return InetAddress.getByName((String) server[0]).getHostAddress() + ":" + server[1];
               } catch (UnknownHostException ex) {
                 throw new RuntimeException("Problems while resolving hostnames.", (Throwable) ex);
               }
-            }).collect(Collectors.joining((CharSequence) ","));
+            })
+        .collect(Collectors.joining((CharSequence) ","));
   }
 
   private static byte[] retrieveSecretValue(String projectId, String secretId) {

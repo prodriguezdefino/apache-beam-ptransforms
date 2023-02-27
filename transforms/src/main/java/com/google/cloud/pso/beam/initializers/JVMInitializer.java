@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2023 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -23,8 +23,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JVMInitializer
-        implements JvmInitializer {
+public class JVMInitializer implements JvmInitializer {
 
   private static final Logger LOG = LoggerFactory.getLogger(JVMInitializer.class);
 

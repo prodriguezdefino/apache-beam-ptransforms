@@ -21,34 +21,32 @@ import com.google.cloud.pso.beam.common.formats.TransportFormats;
 import com.google.cloud.pso.beam.common.transport.CommonTransport;
 import com.google.cloud.pso.beam.common.transport.coder.CommonTransportCoder;
 import com.google.cloud.pso.beam.generator.thrift.User;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.junit.Assert;
-import org.junit.Test;
 import com.google.cloud.pso.beam.options.CountByFieldsAggregationOptions;
 import com.google.common.collect.Maps;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.testing.TestStream;
 import org.apache.beam.sdk.values.TimestampedValue;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
+import org.junit.Assert;
+import org.junit.Test;
 
-/**
- *
- */
+/** */
 public class CountAggregationTest {
 
   @Test
   public void testOptions() throws JsonProcessingException {
-    String[] args = {
-      "--aggregationKeyNames=uuid"
-    };
+    String[] args = {"--aggregationKeyNames=uuid"};
 
-    var options = PipelineOptionsFactory
-            .fromArgs(args).withValidation().as(CountByFieldsAggregationOptions.class);
+    var options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(CountByFieldsAggregationOptions.class);
     var countConfig = options.getCountConfiguration();
     var json = new ObjectMapper().writeValueAsString(countConfig);
 
@@ -57,8 +55,8 @@ public class CountAggregationTest {
   }
 
   CommonTransport createTransport(User baseUser, String uuid) {
-    var handler = TransportFormats
-            .handlerFactory(TransportFormats.Format.THRIFT)
+    var handler =
+        TransportFormats.handlerFactory(TransportFormats.Format.THRIFT)
             .apply(baseUser.getClass().getName());
     var emptyHeaders = Maps.<String, String>newHashMap();
     baseUser.setUuid(uuid);
@@ -76,18 +74,17 @@ public class CountAggregationTest {
       "--thriftClassName=com.google.cloud.pso.beam.generator.thrift.User"
     };
 
-    var options = PipelineOptionsFactory
-            .fromArgs(args).withValidation().as(CountByFieldsAggregationOptions.class);
+    var options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(CountByFieldsAggregationOptions.class);
     var testPipeline = TestPipeline.create(options);
     var baseTime = Instant.now();
     var baseUser = new User();
 
-    baseUser.setStartup(
-            10L);
-    baseUser.setDescription(
-            "Description");
-    baseUser.setLocation(
-            "Location");
+    baseUser.setStartup(10L);
+    baseUser.setDescription("Description");
+    baseUser.setLocation("Location");
 
     var now = Instant.now();
     var afterAMinute = baseTime.plus(Duration.standardMinutes(1L));
@@ -95,36 +92,34 @@ public class CountAggregationTest {
     var afterTwoMinutes = afterAMinute.plus(Duration.standardMinutes(1L));
     var afterTwoMinutesAndMore = afterTwoMinutes.plus(Duration.standardSeconds(20L));
 
-    var stream
-            = TestStream
-                    .create(CommonTransportCoder.of())
-                    .advanceWatermarkTo(baseTime)
-                    .addElements(TimestampedValue.of(createTransport(baseUser, "1"), now))
-                    .addElements(TimestampedValue.of(createTransport(baseUser, "2"), now))
-                    .addElements(TimestampedValue.of(createTransport(baseUser, "3"), now))
-                    .advanceProcessingTime(Duration.standardSeconds(61L)) // force to fire a pane
-                    .advanceWatermarkTo(afterAMinute)
-                    .addElements(TimestampedValue.of(createTransport(baseUser, "1"), afterAMinuteAndMore))
-                    .addElements(TimestampedValue.of(createTransport(baseUser, "3"), afterAMinuteAndMore))
-                    .advanceProcessingTime(Duration.standardSeconds(61L)) // force to fire a pane
-                    .advanceWatermarkTo(afterTwoMinutes)
-                    .addElements(TimestampedValue.of(createTransport(baseUser, "1"), afterTwoMinutesAndMore))
-                    .advanceProcessingTime(Duration.standardSeconds(61L)) // force to fire a pane
-                    .advanceWatermarkTo(afterTwoMinutes.plus(Duration.standardMinutes(1L)))
-                    .advanceWatermarkToInfinity();
+    var stream =
+        TestStream.create(CommonTransportCoder.of())
+            .advanceWatermarkTo(baseTime)
+            .addElements(TimestampedValue.of(createTransport(baseUser, "1"), now))
+            .addElements(TimestampedValue.of(createTransport(baseUser, "2"), now))
+            .addElements(TimestampedValue.of(createTransport(baseUser, "3"), now))
+            .advanceProcessingTime(Duration.standardSeconds(61L)) // force to fire a pane
+            .advanceWatermarkTo(afterAMinute)
+            .addElements(TimestampedValue.of(createTransport(baseUser, "1"), afterAMinuteAndMore))
+            .addElements(TimestampedValue.of(createTransport(baseUser, "3"), afterAMinuteAndMore))
+            .advanceProcessingTime(Duration.standardSeconds(61L)) // force to fire a pane
+            .advanceWatermarkTo(afterTwoMinutes)
+            .addElements(
+                TimestampedValue.of(createTransport(baseUser, "1"), afterTwoMinutesAndMore))
+            .advanceProcessingTime(Duration.standardSeconds(61L)) // force to fire a pane
+            .advanceWatermarkTo(afterTwoMinutes.plus(Duration.standardMinutes(1L)))
+            .advanceWatermarkToInfinity();
 
-    var counted = testPipeline.apply(stream)
-            .apply(CountByFieldsAggregation.create());
+    var counted = testPipeline.apply(stream).apply(CountByFieldsAggregation.create());
 
     PAssert.that(counted)
-            .satisfies(counts -> {
-              Supplier<Stream<AggregationResultTransport>> validateStream
-                      = () -> StreamSupport.stream(counts.spliterator(), false);
+        .satisfies(
+            counts -> {
+              Supplier<Stream<AggregationResultTransport>> validateStream =
+                  () -> StreamSupport.stream(counts.spliterator(), false);
 
               // we expect 3 final values
-              var finalResults = validateStream.get()
-                      .filter(res -> res.ifFinalValue())
-                      .count();
+              var finalResults = validateStream.get().filter(res -> res.ifFinalValue()).count();
               Assert.assertEquals(3, finalResults);
 
               // also we expect 9 values, 3 final and 6 early,
@@ -134,34 +129,46 @@ public class CountAggregationTest {
               Assert.assertEquals(9, totalResults);
 
               // final result for uuid=1 is 3L
-              var id1FinalResult = (Long) validateStream.get()
-                      .filter(res -> res.getAggregationKey().equals("uuid#1#count"))
-                      .filter(res -> res.ifFinalValue())
-                      .findFirst().get().getResult();
+              var id1FinalResult =
+                  (Long)
+                      validateStream
+                          .get()
+                          .filter(res -> "uuid#1#count".equals(res.getAggregationKey()))
+                          .filter(res -> res.ifFinalValue())
+                          .findFirst()
+                          .get()
+                          .getResult();
 
               Assert.assertEquals(3L, id1FinalResult.longValue());
 
               // final result for uuid=2 is 1L
-              var id2FinalResult = (Long) validateStream.get()
-                      .filter(res -> res.getAggregationKey().equals("uuid#2#count"))
-                      .filter(res -> res.ifFinalValue())
-                      .findFirst().get().getResult();
+              var id2FinalResult =
+                  (Long)
+                      validateStream
+                          .get()
+                          .filter(res -> "uuid#2#count".equals(res.getAggregationKey()))
+                          .filter(res -> res.ifFinalValue())
+                          .findFirst()
+                          .get()
+                          .getResult();
 
               Assert.assertEquals(1L, id2FinalResult.longValue());
 
               // final result for uuid=1 is 1L
-              var id3FinalResult = (Long) validateStream.get()
-                      .filter(res -> res.getAggregationKey().equals("uuid#3#count"))
-                      .filter(res -> res.ifFinalValue())
-                      .findFirst().get().getResult();
+              var id3FinalResult =
+                  (Long)
+                      validateStream
+                          .get()
+                          .filter(res -> "uuid#3#count".equals(res.getAggregationKey()))
+                          .filter(res -> res.ifFinalValue())
+                          .findFirst()
+                          .get()
+                          .getResult();
 
               Assert.assertEquals(2L, id3FinalResult.longValue());
 
               return null;
-            }
-            );
-    testPipeline.run()
-            .waitUntilFinish();
+            });
+    testPipeline.run().waitUntilFinish();
   }
-
 }
