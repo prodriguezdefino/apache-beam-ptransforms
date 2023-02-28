@@ -26,13 +26,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.joda.time.Instant;
 
 @DefaultCoder(PubSubTransportCoder.class)
-public class PubSubTransport implements EventTransport {
-
-  private final PubsubMessage message;
-
-  public PubSubTransport(PubsubMessage message) {
-    this.message = message;
-  }
+public record PubSubTransport(PubsubMessage message) implements EventTransport {
 
   @Override
   public String getId() {

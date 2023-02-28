@@ -16,13 +16,17 @@
 package com.google.cloud.pso.beam.transforms.aggregations;
 
 import com.google.cloud.pso.beam.common.formats.TransportFormats;
+import com.google.cloud.pso.beam.common.transport.AggregationResultTransport;
+import com.google.cloud.pso.beam.common.transport.AggregationTransport;
 import com.google.cloud.pso.beam.common.transport.EventTransport;
+import com.google.cloud.pso.beam.common.transport.Transport;
 import com.google.cloud.pso.beam.options.CountByFieldsAggregationOptions;
 import com.google.common.collect.Maps;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CustomCoder;
@@ -45,6 +49,7 @@ import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
+import org.apache.beam.sdk.transforms.windowing.Repeatedly;
 import org.apache.beam.sdk.transforms.windowing.Trigger;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
@@ -61,8 +66,7 @@ import org.slf4j.LoggerFactory;
  * enables the configuration of the window's length and trigger frequencies.
  */
 public class CountByFieldsAggregation
-    extends PTransform<
-        PCollection<? extends EventTransport>, PCollection<AggregationResultTransport>> {
+    extends PTransform<PCollection<? extends Transport>, PCollection<AggregationResultTransport>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(CountByFieldsAggregation.class);
 
@@ -73,12 +77,13 @@ public class CountByFieldsAggregation
   }
 
   Trigger getTrigger(Integer elementCount, Integer triggerSeconds) {
-    return AfterWatermark.pastEndOfWindow()
-        .withEarlyFirings(
-            AfterFirst.of(
-                AfterPane.elementCountAtLeast(elementCount),
-                AfterProcessingTime.pastFirstElementInPane()
-                    .plusDelayOf(Duration.standardSeconds(triggerSeconds))));
+    return Repeatedly.forever(
+        AfterWatermark.pastEndOfWindow()
+            .withEarlyFirings(
+                AfterFirst.of(
+                    AfterPane.elementCountAtLeast(elementCount),
+                    AfterProcessingTime.pastFirstElementInPane()
+                        .plusDelayOf(Duration.standardSeconds(triggerSeconds)))));
   }
 
   Window<KV<String, Long>> getWindow(CountByFieldsAggregationOptions options) {
@@ -101,8 +106,7 @@ public class CountByFieldsAggregation
   }
 
   @Override
-  public PCollection<AggregationResultTransport> expand(
-      PCollection<? extends EventTransport> input) {
+  public PCollection<AggregationResultTransport> expand(PCollection<? extends Transport> input) {
     var options = input.getPipeline().getOptions().as(CountByFieldsAggregationOptions.class);
     input
         .getPipeline()
@@ -135,7 +139,7 @@ public class CountByFieldsAggregation
         .apply("ToAggregationResults", ParDo.of(new ToCountResults()));
   }
 
-  static class ToCountableTransports extends DoFn<EventTransport, CountTransport> {
+  static class ToCountableTransports extends DoFn<Transport, CountTransport> {
 
     private CountByFieldsAggregationConfiguration config;
 
@@ -231,17 +235,8 @@ public class CountByFieldsAggregation
   }
 
   @DefaultCoder(CountTransportCoder.class)
-  static class CountTransport implements AggregationTransport<String, Long> {
-
-    final String id;
-    final Map<String, String> headers;
-    final String aggregationKey;
-
-    CountTransport(String id, Map<String, String> headers, String aggregationKey) {
-      this.id = id;
-      this.headers = headers;
-      this.aggregationKey = aggregationKey;
-    }
+  record CountTransport(String id, Map<String, String> headers, String aggregationKey)
+      implements AggregationTransport<String, Long> {
 
     @Override
     public String getAggregationKey() {
@@ -259,47 +254,44 @@ public class CountByFieldsAggregation
     }
 
     @Override
-    public byte[] getData() {
-      return new byte[0];
-    }
-
-    @Override
     public Map<String, Long> getMappedValues() {
       return Map.of("count", 1L);
     }
 
     public static CountTransport fromTransportAndConfiguration(
-        EventTransport transport, CountByFieldsAggregationConfiguration configuration) {
-      var format = configuration.getFormat();
-      var formatHandlerFactory = TransportFormats.handlerFactory(format);
+        Transport transport, CountByFieldsAggregationConfiguration configuration) {
 
-      var handler =
-          switch (format) {
-            case THRIFT -> formatHandlerFactory.apply(configuration.getClassName());
-            case AVRO -> formatHandlerFactory.apply(configuration.getAvroSchema());
-          };
+      if (transport instanceof EventTransport ev) {
+        var format = configuration.getFormat();
+        var formatHandlerFactory = TransportFormats.handlerFactory(format);
 
-      var decodedData = handler.decode(transport.getData());
-      var aggregationKey =
-          configuration.getKeyFields().stream()
-              .map(keyField -> keyField + "#" + handler.stringValue(decodedData, keyField))
-              .collect(Collectors.joining("#"));
-      return new CountTransport(transport.getId(), transport.getHeaders(), aggregationKey);
+        var handler =
+            switch (format) {
+              case THRIFT -> formatHandlerFactory.apply(configuration.getClassName());
+              case AVRO -> formatHandlerFactory.apply(configuration.getAvroSchema());
+            };
+
+        var decodedData = handler.decode(ev.getData());
+        var aggregationKey =
+            configuration.getKeyFields().stream()
+                .map(keyField -> keyField + "#" + handler.stringValue(decodedData, keyField))
+                .collect(Collectors.joining("#"));
+        return new CountTransport(ev.getId(), ev.getHeaders(), aggregationKey);
+      } else if (transport instanceof AggregationResultTransport agg) {
+        var aggregationKey =
+            configuration.getKeyFields().stream()
+                .map(keyField -> keyField + "#" + agg.getAggregationKey())
+                .collect(Collectors.joining("#"));
+        return new CountTransport(agg.getId(), agg.getHeaders(), aggregationKey);
+      } else
+        throw new IllegalArgumentException(
+            "Currently aggregations can only be computed against event and aggregation result transports");
     }
   }
 
   @DefaultCoder(CountResultTransportCoder.class)
-  static class CountResultTransport implements AggregationResultTransport<String, Long> {
-
-    private final String aggregationKey;
-    private final Long result;
-    private final Map<String, String> headers;
-
-    public CountResultTransport(String aggregationKey, Long result, Map<String, String> headers) {
-      this.aggregationKey = aggregationKey;
-      this.result = result;
-      this.headers = headers;
-    }
+  record CountResultTransport(String aggregationKey, Long result, Map<String, String> headers)
+      implements AggregationResultTransport<String, Long> {
 
     @Override
     public String getAggregationKey() {
@@ -313,17 +305,12 @@ public class CountByFieldsAggregation
 
     @Override
     public String getId() {
-      return aggregationKey;
+      return UUID.randomUUID().toString();
     }
 
     @Override
     public Map<String, String> getHeaders() {
       return headers;
-    }
-
-    @Override
-    public byte[] getData() {
-      return new byte[0];
     }
 
     @Override

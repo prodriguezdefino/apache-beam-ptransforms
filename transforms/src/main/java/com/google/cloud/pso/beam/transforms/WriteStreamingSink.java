@@ -139,7 +139,7 @@ public class WriteStreamingSink extends PTransform<PCollection<EventTransport>, 
       context.output(
           context
               .element()
-              .getEventEpochInMillis()
+              .getTransportEpochInMillis()
               .map(
                   ts ->
                       msgBuilder.setEventTime(

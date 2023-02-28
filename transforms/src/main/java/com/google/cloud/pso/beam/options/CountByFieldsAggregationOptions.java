@@ -52,7 +52,7 @@ public interface CountByFieldsAggregationOptions extends TransportFormatOptions 
   void setAggregationDiscardPartialResults(Boolean value);
 
   @Description("Configures how much time in minutes the aggregation will wait for late data.")
-  @Default.Integer(0)
+  @Default.Integer(1)
   Integer getAggregationAllowedLatenessInMinutes();
 
   void setAggregationAllowedLatenessInMinutes(Integer value);
