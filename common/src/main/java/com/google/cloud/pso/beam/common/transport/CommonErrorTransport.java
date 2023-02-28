@@ -20,32 +20,41 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /** Simple implementation for an ErrorTransport */
-public class CommonErrorTransport extends CommonTransport implements ErrorTransport {
-
-  private final String serializedCause;
-  private final String errorMessage;
+public record CommonErrorTransport(
+    String id,
+    byte[] erroredData,
+    Map<String, String> headers,
+    String serializedCause,
+    String errorMessage)
+    implements ErrorTransport {
 
   public CommonErrorTransport(
       String id, Map<String, String> headers, byte[] data, Throwable cause, String errorMessage) {
-    super(id, headers, data);
-    this.serializedCause =
+    this(
+        id,
+        data,
+        headers,
         cause.getMessage()
             + "\n"
             + Arrays.stream(cause.getStackTrace())
                 .map(se -> se.toString())
-                .collect(Collectors.joining("\n"));
-    this.errorMessage = errorMessage;
+                .collect(Collectors.joining("\n")),
+        errorMessage);
   }
 
-  public CommonErrorTransport(
-      String id,
-      Map<String, String> headers,
-      byte[] data,
-      String serializedCause,
-      String errorMessage) {
-    super(id, headers, data);
-    this.serializedCause = serializedCause;
-    this.errorMessage = errorMessage;
+  @Override
+  public String getId() {
+    return id;
+  }
+
+  @Override
+  public Map<String, String> getHeaders() {
+    return headers;
+  }
+
+  @Override
+  public byte[] getErroredData() {
+    return erroredData;
   }
 
   @Override
@@ -65,6 +74,15 @@ public class CommonErrorTransport extends CommonTransport implements ErrorTransp
 
   public static CommonErrorTransport of(EventTransport transport, String message, String cause) {
     return new CommonErrorTransport(
-        transport.getId(), transport.getHeaders(), transport.getData(), cause, message);
+        transport.getId(), transport.getData(), transport.getHeaders(), cause, message);
+  }
+
+  public static CommonErrorTransport of(
+      String id,
+      byte[] data,
+      Map<String, String> headers,
+      String serializedCause,
+      String errorMessage) {
+    return new CommonErrorTransport(id, data, headers, serializedCause, errorMessage);
   }
 }

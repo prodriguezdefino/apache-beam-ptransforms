@@ -13,10 +13,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.beam.transforms.aggregations;
+package com.google.cloud.pso.beam.common.transport;
 
 import com.google.cloud.pso.beam.common.Utilities;
-import com.google.cloud.pso.beam.common.transport.EventTransport;
 import java.util.Optional;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.joda.time.Instant;
@@ -27,7 +26,7 @@ import org.joda.time.Instant;
  * @param <K> the type of the aggregation key
  * @param <V> the type of the aggregation result
  */
-public interface AggregationResultTransport<K, V> extends EventTransport {
+public non-sealed interface AggregationResultTransport<K, V> extends Transport {
 
   public enum ResultType {
     INT,

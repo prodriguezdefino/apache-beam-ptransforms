@@ -13,9 +13,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.beam.transforms.aggregations;
+package com.google.cloud.pso.beam.common.transport;
 
-import com.google.cloud.pso.beam.common.transport.EventTransport;
 import java.util.Map;
 
 /**
@@ -24,7 +23,7 @@ import java.util.Map;
  * @param <K> the type of the aggregation key
  * @param <V> the type of the data to be aggregated
  */
-public interface AggregationTransport<K, V> extends EventTransport {
+public non-sealed interface AggregationTransport<K, V> extends Transport {
 
   K getAggregationKey();
 

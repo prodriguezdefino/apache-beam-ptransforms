@@ -19,8 +19,11 @@ import com.google.cloud.pso.beam.common.transport.CommonErrorTransport;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Map;
+import org.apache.beam.sdk.coders.ByteArrayCoder;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CustomCoder;
+import org.apache.beam.sdk.coders.MapCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.values.TypeDescriptor;
@@ -32,7 +35,13 @@ public class CommonErrorTransportCoder extends CustomCoder<CommonErrorTransport>
   private static final Coder<String> MESSAGE_CODER = NullableCoder.of(StringUtf8Coder.of());
   // The serialized cause can also be null
   private static final Coder<String> CAUSE_CODER = NullableCoder.of(StringUtf8Coder.of());
-  private static final CommonTransportCoder TRANSPORT_CODER = CommonTransportCoder.of();
+  // A message's payload cannot be null
+  private static final Coder<byte[]> DATA_CODER = ByteArrayCoder.of();
+  // A message's attributes can be null.
+  private static final Coder<Map<String, String>> HEADERS_CODER =
+      NullableCoder.of(MapCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+  // A message's messageId may be null at some moments in the execution
+  private static final Coder<String> ID_CODER = NullableCoder.of(StringUtf8Coder.of());
 
   public static Coder<CommonErrorTransport> of(TypeDescriptor<CommonErrorTransport> ignored) {
     return of();
@@ -44,16 +53,20 @@ public class CommonErrorTransportCoder extends CustomCoder<CommonErrorTransport>
 
   @Override
   public void encode(CommonErrorTransport value, OutputStream outStream) throws IOException {
-    TRANSPORT_CODER.encode(value, outStream);
+    ID_CODER.encode(value.getId(), outStream);
+    DATA_CODER.encode(value.getErroredData(), outStream);
+    HEADERS_CODER.encode(value.getHeaders(), outStream);
     MESSAGE_CODER.encode(value.getErrorMessage(), outStream);
     CAUSE_CODER.encode(value.getSerializedCause(), outStream);
   }
 
   @Override
   public CommonErrorTransport decode(InputStream inStream) throws IOException {
-    var commonTransport = TRANSPORT_CODER.decode(inStream);
+    var id = ID_CODER.decode(inStream);
+    var data = DATA_CODER.decode(inStream);
+    var headers = HEADERS_CODER.decode(inStream);
     var errorMessage = MESSAGE_CODER.decode(inStream);
     var serializedCause = CAUSE_CODER.decode(inStream);
-    return CommonErrorTransport.of(commonTransport, errorMessage, serializedCause);
+    return CommonErrorTransport.of(id, data, headers, errorMessage, serializedCause);
   }
 }

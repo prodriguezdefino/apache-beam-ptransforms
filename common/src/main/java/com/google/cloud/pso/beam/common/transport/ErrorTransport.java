@@ -20,7 +20,7 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.values.Row;
 
 /** Represents an error of the processing of a particular event. */
-public interface ErrorTransport extends EventTransport {
+public non-sealed interface ErrorTransport extends Transport {
 
   static final Schema ERROR_ROW_SCHEMA =
       Schema.builder()
@@ -30,6 +30,8 @@ public interface ErrorTransport extends EventTransport {
           .addStringField("serializedHeaders")
           .addByteArrayField("data")
           .build();
+
+  byte[] getErroredData();
 
   String getErrorMessage();
 
@@ -45,7 +47,7 @@ public interface ErrorTransport extends EventTransport {
             getHeaders().keySet().stream()
                 .map(key -> key + "=" + getHeaders().get(key))
                 .collect(Collectors.joining(", ", "{", "}")))
-        .withFieldValue("data", getData())
+        .withFieldValue("data", getErroredData())
         .build();
   }
 }

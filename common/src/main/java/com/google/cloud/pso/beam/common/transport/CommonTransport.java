@@ -21,17 +21,8 @@ import org.apache.beam.sdk.coders.DefaultCoder;
 
 /** Immutable generic transport. */
 @DefaultCoder(CommonTransportCoder.class)
-public class CommonTransport implements EventTransport {
-
-  private final String id;
-  private final Map<String, String> headers;
-  private final byte[] data;
-
-  public CommonTransport(String id, Map<String, String> headers, byte[] data) {
-    this.id = id;
-    this.headers = headers;
-    this.data = data;
-  }
+public record CommonTransport(String id, Map<String, String> headers, byte[] data)
+    implements EventTransport {
 
   @Override
   public String getId() {

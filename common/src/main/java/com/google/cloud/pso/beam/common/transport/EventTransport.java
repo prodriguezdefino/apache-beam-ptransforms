@@ -15,44 +15,11 @@
  */
 package com.google.cloud.pso.beam.common.transport;
 
-import java.util.Map;
-import java.util.Optional;
-import org.joda.time.Instant;
-
 /**
  * A transport interface that should cover the needed methods to move data between sources and
  * sinks.
  */
-public interface EventTransport {
-
-  static final String EVENT_TIME_KEY = "eventTimestamp";
-  static final String SCHEMA_ATTRIBUTE_KEY = "SCHEMA_ATTRIBUTE";
-
-  String getId();
-
-  Map<String, String> getHeaders();
+public non-sealed interface EventTransport extends Transport {
 
   byte[] getData();
-
-  /**
-   * In case the headers of this event transport contains a key named "eventTimestamp" with a value
-   * representing a ISO timestamp, this method will return an Optional containing the millis from
-   * epoch represented in that ISO timestamp; if the attribute key is not present the Optional is
-   * empty.
-   *
-   * @return Optional with potentially a value of millis since epoch
-   */
-  default Optional<Long> getEventEpochInMillis() {
-    return Optional.ofNullable(this.getHeaders().get(EVENT_TIME_KEY))
-        .map(EventTransport::fromStringTimestamp)
-        .orElse(Optional.empty());
-  }
-
-  static Optional<Long> fromStringTimestamp(String stringTimestamp) {
-    try {
-      return Optional.of(Instant.parse(stringTimestamp).getMillis());
-    } catch (Exception ex) {
-      return Optional.empty();
-    }
-  }
 }
