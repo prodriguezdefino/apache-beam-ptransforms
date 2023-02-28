@@ -18,12 +18,14 @@ package com.google.cloud.pso.beam.transforms.aggregations;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.pso.beam.common.formats.TransportFormats;
+import com.google.cloud.pso.beam.common.transport.AggregationResultTransport;
 import com.google.cloud.pso.beam.common.transport.CommonTransport;
 import com.google.cloud.pso.beam.common.transport.coder.CommonTransportCoder;
 import com.google.cloud.pso.beam.generator.thrift.User;
 import com.google.cloud.pso.beam.options.CountByFieldsAggregationOptions;
 import com.google.common.collect.Maps;
 import java.util.function.Supplier;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -38,6 +40,7 @@ import org.junit.Test;
 
 /** */
 public class CountAggregationTest {
+  private static final Logger LOG = Logger.getLogger(CountAggregationTest.class.getName());
 
   @Test
   public void testOptions() throws JsonProcessingException {
@@ -79,35 +82,33 @@ public class CountAggregationTest {
             .withValidation()
             .as(CountByFieldsAggregationOptions.class);
     var testPipeline = TestPipeline.create(options);
-    var baseTime = Instant.now();
+    // we need a constant time to have consistent results, in the case of having dynamicly captured
+    // time we may fall in the problem of having half of the data in 1 window and half on the other
+    // complicating the validation.
+    var baseTime = Instant.parse("2007-07-08T05:00:00.000Z");
     var baseUser = new User();
 
     baseUser.setStartup(10L);
     baseUser.setDescription("Description");
     baseUser.setLocation("Location");
 
-    var now = Instant.now();
-    var afterAMinute = baseTime.plus(Duration.standardMinutes(1L));
-    var afterAMinuteAndMore = afterAMinute.plus(Duration.standardSeconds(20L));
-    var afterTwoMinutes = afterAMinute.plus(Duration.standardMinutes(1L));
-    var afterTwoMinutesAndMore = afterTwoMinutes.plus(Duration.standardSeconds(20L));
+    var rightAfter = baseTime.plus(Duration.standardSeconds(10L));
+    var afterAMinuteAndMore = baseTime.plus(Duration.standardSeconds(80L));
+    var afterTwoMinutesAndMore = baseTime.plus(Duration.standardSeconds(140L));
 
     var stream =
         TestStream.create(CommonTransportCoder.of())
             .advanceWatermarkTo(baseTime)
-            .addElements(TimestampedValue.of(createTransport(baseUser, "1"), now))
-            .addElements(TimestampedValue.of(createTransport(baseUser, "2"), now))
-            .addElements(TimestampedValue.of(createTransport(baseUser, "3"), now))
-            .advanceProcessingTime(Duration.standardSeconds(61L)) // force to fire a pane
-            .advanceWatermarkTo(afterAMinute)
+            .addElements(TimestampedValue.of(createTransport(baseUser, "1"), rightAfter))
+            .addElements(TimestampedValue.of(createTransport(baseUser, "2"), rightAfter))
+            .addElements(TimestampedValue.of(createTransport(baseUser, "3"), rightAfter))
+            .advanceProcessingTime(Duration.standardSeconds(65L)) // force to fire first pane
             .addElements(TimestampedValue.of(createTransport(baseUser, "1"), afterAMinuteAndMore))
             .addElements(TimestampedValue.of(createTransport(baseUser, "3"), afterAMinuteAndMore))
-            .advanceProcessingTime(Duration.standardSeconds(61L)) // force to fire a pane
-            .advanceWatermarkTo(afterTwoMinutes)
+            .advanceProcessingTime(Duration.standardSeconds(65L)) // force to fire a second pane
             .addElements(
                 TimestampedValue.of(createTransport(baseUser, "1"), afterTwoMinutesAndMore))
-            .advanceProcessingTime(Duration.standardSeconds(61L)) // force to fire a pane
-            .advanceWatermarkTo(afterTwoMinutes.plus(Duration.standardMinutes(1L)))
+            .advanceProcessingTime(Duration.standardSeconds(65L)) // force to fire a third pane
             .advanceWatermarkToInfinity();
 
     var counted = testPipeline.apply(stream).apply(CountByFieldsAggregation.create());
@@ -115,6 +116,7 @@ public class CountAggregationTest {
     PAssert.that(counted)
         .satisfies(
             counts -> {
+              LOG.info("results: " + counts.toString());
               Supplier<Stream<AggregationResultTransport>> validateStream =
                   () -> StreamSupport.stream(counts.spliterator(), false);
 
@@ -122,9 +124,9 @@ public class CountAggregationTest {
               var finalResults = validateStream.get().filter(res -> res.ifFinalValue()).count();
               Assert.assertEquals(3, finalResults);
 
-              // also we expect 9 values, 3 final and 6 early,
-              // since we have 3 early firings before completion (the first one with 3 results,
-              // the second one with 2 results, and the last one with only 1 result)
+              // also we expect 9 values, 3 final and 6 early, since we have 3 early firings before
+              // completion (the first one with 3 results, the second one with 2 results, and the
+              // last one with only 1 result)
               var totalResults = validateStream.get().count();
               Assert.assertEquals(9, totalResults);
 
