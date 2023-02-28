@@ -93,9 +93,13 @@ public class CountByFieldsAggregation
             .triggering(
                 getTrigger(
                     options.getAggregationPartialTriggerEventCount(),
-                    options.getAggregationPartialTriggerSeconds()))
-            .withAllowedLateness(
-                Duration.standardMinutes(options.getAggregationAllowedLatenessInMinutes()));
+                    options.getAggregationPartialTriggerSeconds()));
+
+    if (options.getAggregationAllowedLatenessInMinutes() > 0)
+      window =
+          window.withAllowedLateness(
+              Duration.standardMinutes(options.getAggregationAllowedLatenessInMinutes()),
+              Window.ClosingBehavior.FIRE_ALWAYS);
     if (options.getAggregationDiscardPartialResults()) {
       window = window.discardingFiredPanes();
     } else {
