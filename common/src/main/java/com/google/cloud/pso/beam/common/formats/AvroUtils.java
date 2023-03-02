@@ -66,7 +66,7 @@ public class AvroUtils {
       TBase<?, ?> thriftObject, Schema avroSchema) {
     try {
       var bao = new ByteArrayOutputStream();
-      var w = new ThriftDatumWriter(avroSchema);
+      var w = new ThriftDatumWriter<>(avroSchema);
       var e = EncoderFactory.get().binaryEncoder(bao, null);
       w.write(thriftObject, e);
       e.flush();

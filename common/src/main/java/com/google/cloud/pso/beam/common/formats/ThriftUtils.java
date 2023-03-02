@@ -26,7 +26,7 @@ import org.apache.thrift.transport.TTransportException;
 
 /** */
 public class ThriftUtils {
-
+  @SuppressWarnings("unchecked")
   public static Class<? extends TBase<?, ?>> retrieveThriftClass(String className) {
     try {
       return (Class<? extends TBase<?, ?>>)
@@ -36,6 +36,7 @@ public class ThriftUtils {
     }
   }
 
+  @SuppressWarnings("unchecked")
   public static Class<? extends TFieldIdEnum> retrieveThirftFieldEnum(String className) {
     try {
       return (Class<? extends TFieldIdEnum>)
@@ -58,6 +59,7 @@ public class ThriftUtils {
     }
   }
 
+  @SuppressWarnings("unchecked")
   public static FieldMetaData validateFieldAndReturn(TBase element, String propertyName) {
     var clazz = (Class<? extends TBase>) element.getClass();
     return ((Map<? extends TBase, FieldMetaData>) FieldMetaData.getStructMetaDataMap(clazz))

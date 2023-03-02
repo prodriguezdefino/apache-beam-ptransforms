@@ -51,6 +51,7 @@ public class KafkaConfig implements Serializable {
     this.keysRootFolder = keysRootFolder;
   }
 
+  @SuppressWarnings("unchecked")
   public <T extends KafkaConfig> T as(Class<T> clazz) {
     return (T) this;
   }

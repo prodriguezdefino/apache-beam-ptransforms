@@ -16,22 +16,24 @@
 package com.google.cloud.pso.beam.options;
 
 import com.google.cloud.pso.beam.common.formats.options.TransportFormatOptions;
-import com.google.cloud.pso.beam.transforms.aggregations.CountByFieldsAggregationConfiguration;
-import java.util.Arrays;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.DefaultValueFactory;
 import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
 /** Defines the options to configure when running a count aggregation. */
-public interface CountByFieldsAggregationOptions extends TransportFormatOptions {
+public interface AggregationOptions extends TransportFormatOptions {
 
   @Description("The aggregation key field names (it can be a comma separated value list).")
   @Validation.Required
   String getAggregationKeyNames();
 
   void setAggregationKeyNames(String value);
+
+  @Description("The aggregation value field names (it can be a comma separated value list).")
+  @Default.String("")
+  String getAggregationValueNames();
+
+  void setAggregationValueNames(String value);
 
   @Description("The amount of seconds the aggregation timer will wait to trigger.")
   @Default.Integer(30)
@@ -51,6 +53,12 @@ public interface CountByFieldsAggregationOptions extends TransportFormatOptions 
 
   void setAggregationDiscardPartialResults(Boolean value);
 
+  @Description("Configures if the aggregation should trigger early results.")
+  @Default.Boolean(true)
+  Boolean getAggregationEarlyFirings();
+
+  void setAggregationEarlyFirings(Boolean value);
+
   @Description("Configures how much time in minutes the aggregation will wait for late data.")
   @Default.Integer(1)
   Integer getAggregationAllowedLatenessInMinutes();
@@ -62,24 +70,4 @@ public interface CountByFieldsAggregationOptions extends TransportFormatOptions 
   Integer getAggregationWindowInMinutes();
 
   void setAggregationWindowInMinutes(Integer value);
-
-  @Description("Retrieves a fully initialized Count configuration object.")
-  @Default.InstanceFactory(CountConfigurationFactory.class)
-  CountByFieldsAggregationConfiguration getCountConfiguration();
-
-  void setCountConfiguration(CountByFieldsAggregationConfiguration value);
-
-  static class CountConfigurationFactory
-      implements DefaultValueFactory<CountByFieldsAggregationConfiguration> {
-
-    @Override
-    public CountByFieldsAggregationConfiguration create(PipelineOptions options) {
-      var opts = options.as(CountByFieldsAggregationOptions.class);
-      return new CountByFieldsAggregationConfiguration(
-          opts.getTransportFormat(),
-          opts.getThriftClassName(),
-          opts.getAvroSchemaLocation(),
-          Arrays.asList(opts.getAggregationKeyNames().split(",")));
-    }
-  }
 }

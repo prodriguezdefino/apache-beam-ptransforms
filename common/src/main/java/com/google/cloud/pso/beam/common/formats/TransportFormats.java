@@ -25,6 +25,7 @@ import static org.apache.avro.Schema.Type.LONG;
 import com.google.common.collect.Maps;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.Optional;
@@ -74,12 +75,16 @@ public class TransportFormats {
 
     Long longValue(T element, String propertyName);
 
+    Double doubleValue(T element, String propertyName);
+
     String stringValue(T element, String propertyName);
   }
 
-  public record ThriftHandler(Format format, ThriftClass thriftClass) implements Handler<TBase> {
+  public record ThriftHandler(Format format, ThriftClass thriftClass)
+      implements Handler<TBase>, Serializable {
 
-    record ThriftClass(Class<? extends TBase> clazz, Class<? extends TFieldIdEnum> fieldEnum) {
+    record ThriftClass(Class<? extends TBase> clazz, Class<? extends TFieldIdEnum> fieldEnum)
+        implements Serializable {
 
       TFieldIdEnum retrieveFieldEnumValueByFieldName(String fieldName) {
         try {
@@ -132,6 +137,7 @@ public class TransportFormats {
       }
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public Long longValue(TBase element, String propertyName) {
       var field = validateFieldAndReturn(element, propertyName);
@@ -146,11 +152,40 @@ public class TransportFormats {
             .longValue();
         case TType.I64 -> ((Long)
             element.getFieldValue(thriftClass().retrieveFieldEnumValueByFieldName(propertyName)));
+        case TType.DOUBLE -> ((Double)
+                element.getFieldValue(
+                    thriftClass().retrieveFieldEnumValueByFieldName(propertyName)))
+            .longValue();
         default -> throw new IllegalArgumentException(
             "Computed field type is invalid (not numerical).");
       };
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public Double doubleValue(TBase element, String propertyName) {
+      var field = validateFieldAndReturn(element, propertyName);
+      return switch (field.valueMetaData.type) {
+        case TType.I16 -> ((Short)
+                element.getFieldValue(
+                    thriftClass().retrieveFieldEnumValueByFieldName(propertyName)))
+            .doubleValue();
+        case TType.I32 -> ((Integer)
+                element.getFieldValue(
+                    thriftClass().retrieveFieldEnumValueByFieldName(propertyName)))
+            .doubleValue();
+        case TType.I64 -> ((Long)
+                element.getFieldValue(
+                    thriftClass().retrieveFieldEnumValueByFieldName(propertyName)))
+            .doubleValue();
+        case TType.DOUBLE -> ((Double)
+            element.getFieldValue(thriftClass().retrieveFieldEnumValueByFieldName(propertyName)));
+        default -> throw new IllegalArgumentException(
+            "Computed field type is invalid (not numerical).");
+      };
+    }
+
+    @SuppressWarnings("unchecked")
     @Override
     public String stringValue(TBase element, String propertyName) {
       var field = validateFieldAndReturn(element, propertyName);
@@ -216,6 +251,19 @@ public class TransportFormats {
         case LONG -> ((Long) element.get(propertyName));
         case DOUBLE -> ((Double) element.get(propertyName)).longValue();
         case FLOAT -> ((Float) element.get(propertyName)).longValue();
+        default -> throw new IllegalArgumentException(
+            "Computed field type is invalid (not numerical).");
+      };
+    }
+
+    @Override
+    public Double doubleValue(GenericRecord element, String propertyName) {
+      var field = validateField(propertyName);
+      return switch (field.schema().getType()) {
+        case INT -> ((Integer) element.get(propertyName)).doubleValue();
+        case LONG -> ((Long) element.get(propertyName)).doubleValue();
+        case DOUBLE -> ((Double) element.get(propertyName));
+        case FLOAT -> ((Float) element.get(propertyName)).doubleValue();
         default -> throw new IllegalArgumentException(
             "Computed field type is invalid (not numerical).");
       };

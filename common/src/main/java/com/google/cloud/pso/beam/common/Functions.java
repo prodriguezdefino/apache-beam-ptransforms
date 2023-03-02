@@ -17,6 +17,8 @@ package com.google.cloud.pso.beam.common;
 
 import java.io.Serializable;
 import org.apache.beam.sdk.io.FileIO;
+import org.apache.beam.sdk.transforms.SerializableBiFunction;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 
 /**
  * A compilation of interfaces that enable function references to be used in Beam related contexts.
@@ -32,6 +34,20 @@ public class Functions {
      * @return
      */
     OutputT apply();
+  }
+
+  /**
+   * Enables the partial execution of a {@link SerializableBiFunction} in multiple steps.
+   *
+   * @param <A> Type of function's first parameter.
+   * @param <B> Type of function's second parameter.
+   * @param <R> Type of function's return.
+   * @param biFunc SerializableBiFunction instance to partially apply.
+   * @return a curried function representation.
+   */
+  public static <A, B, R> SerializableFunction<A, SerializableFunction<B, R>> curry(
+      SerializableBiFunction<A, B, R> biFunc) {
+    return (a) -> (b) -> biFunc.apply(a, b);
   }
 
   /**
