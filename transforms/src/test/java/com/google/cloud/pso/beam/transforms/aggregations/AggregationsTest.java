@@ -22,6 +22,7 @@ import com.google.cloud.pso.beam.common.transport.coder.CommonTransportCoder;
 import com.google.cloud.pso.beam.generator.thrift.User;
 import com.google.cloud.pso.beam.options.AggregationOptions;
 import com.google.common.collect.Maps;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -30,6 +31,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.testing.TestStream;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TimestampedValue;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
@@ -39,6 +41,17 @@ import org.junit.Test;
 /** Tests for the count aggregation */
 public class AggregationsTest {
   private static final Logger LOG = Logger.getLogger(AggregationsTest.class.getName());
+
+  private static final String[] DEFAULT_ARGS = {
+    "--aggregationKeyNames=uuid",
+    "--aggregationValueNames=startup",
+    "--aggregationWindowInMinutes=15",
+    "--aggregationEarlyFirings=true",
+    "--aggregationPartialTriggerSeconds=60",
+    "--aggregationDiscardPartialResults=false",
+    "--aggregationPartialTriggerEventCount=100000",
+    "--thriftClassName=com.google.cloud.pso.beam.generator.thrift.User"
+  };
 
   @SuppressWarnings("unchecked")
   CommonTransport createTransport(User baseUser, String uuid, Long startup) {
@@ -80,155 +93,148 @@ public class AggregationsTest {
         .advanceWatermarkToInfinity();
   }
 
+  @SafeVarargs
+  private static <Res> Void validateResults(
+      BiConsumer<Res, Res> validateFunction,
+      Iterable<AggregationResultTransport<String, Res>> results,
+      KV<String, Res>... expectations) {
+    LOG.info("results: " + results.toString());
+    Supplier<Stream<AggregationResultTransport<String, Res>>> validateStream =
+        () -> StreamSupport.stream(results.spliterator(), false);
+
+    // we expect 3 final values
+    var finalResults = validateStream.get().filter(res -> res.ifFinalValue()).count();
+    Assert.assertEquals(3, finalResults);
+
+    // also we expect 9 values, 3 final and 6 early, since we have 3 early firings before
+    // completion (the first one with 3 results, the second one with 2 results, and the
+    // last one with only 1 result)
+    var totalResults = validateStream.get().count();
+    Assert.assertEquals(9, totalResults);
+
+    for (var expected : expectations) {
+      // check final result for key
+      var idFinalResult =
+          validateStream
+              .get()
+              .filter(res -> expected.getKey().equals(res.getAggregationKey()))
+              .filter(res -> res.ifFinalValue())
+              .findFirst()
+              .get()
+              .getResult();
+
+      validateFunction.accept(idFinalResult, expected.getValue());
+    }
+
+    return null;
+  }
+
+  @SuppressWarnings("unchecked")
   @Test
   public void testCountAggregation() {
-    String[] args = {
-      "--aggregationKeyNames=uuid",
-      "--aggregationWindowInMinutes=15",
-      "--aggregationPartialTriggerSeconds=60",
-      "--aggregationDiscardPartialResults=false",
-      "--aggregationPartialTriggerEventCount=100000",
-      "--thriftClassName=com.google.cloud.pso.beam.generator.thrift.User"
-    };
-
     var options =
-        PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
+        PipelineOptionsFactory.fromArgs(DEFAULT_ARGS).withValidation().as(AggregationOptions.class);
     var testPipeline = TestPipeline.create(options);
     var stream = createTestStream();
     var counted = testPipeline.apply(stream).apply(CountByFieldsAggregation.create());
 
     PAssert.that(counted)
         .satisfies(
-            counts -> {
-              LOG.info("results: " + counts.toString());
-              Supplier<Stream<AggregationResultTransport<String, Long>>> validateStream =
-                  () -> StreamSupport.stream(counts.spliterator(), false);
+            counts ->
+                AggregationsTest.<Long>validateResults(
+                    (expected, obtained) -> Assert.assertEquals(expected, obtained),
+                    counts,
+                    KV.of("uuid#1#count", 3L),
+                    KV.of("uuid#2#count", 1L),
+                    KV.of("uuid#3#count", 2L)));
 
-              // we expect 3 final values
-              var finalResults = validateStream.get().filter(res -> res.ifFinalValue()).count();
-              Assert.assertEquals(3, finalResults);
-
-              // also we expect 9 values, 3 final and 6 early, since we have 3 early firings before
-              // completion (the first one with 3 results, the second one with 2 results, and the
-              // last one with only 1 result)
-              var totalResults = validateStream.get().count();
-              Assert.assertEquals(9, totalResults);
-
-              // final result for uuid=1 is 3L
-              var id1FinalResult =
-                  validateStream
-                      .get()
-                      .filter(res -> "uuid#1#count".equals(res.getAggregationKey()))
-                      .filter(res -> res.ifFinalValue())
-                      .findFirst()
-                      .get()
-                      .getResult();
-
-              Assert.assertEquals(3L, id1FinalResult.longValue());
-
-              // final result for uuid=2 is 1L
-              var id2FinalResult =
-                  validateStream
-                      .get()
-                      .filter(res -> "uuid#2#count".equals(res.getAggregationKey()))
-                      .filter(res -> res.ifFinalValue())
-                      .findFirst()
-                      .get()
-                      .getResult();
-
-              Assert.assertEquals(1L, id2FinalResult.longValue());
-
-              // final result for uuid=1 is 1L
-              var id3FinalResult =
-                  validateStream
-                      .get()
-                      .filter(res -> "uuid#3#count".equals(res.getAggregationKey()))
-                      .filter(res -> res.ifFinalValue())
-                      .findFirst()
-                      .get()
-                      .getResult();
-
-              Assert.assertEquals(2L, id3FinalResult.longValue());
-
-              return null;
-            });
     testPipeline.run().waitUntilFinish();
   }
 
+  @SuppressWarnings("unchecked")
   @Test
   public void testSumAggregation() {
-    String[] args = {
-      "--aggregationKeyNames=uuid",
-      "--aggregationValueNames=startup",
-      "--aggregationWindowInMinutes=15",
-      "--aggregationEarlyFirings=true",
-      "--aggregationPartialTriggerSeconds=60",
-      "--aggregationDiscardPartialResults=false",
-      "--aggregationPartialTriggerEventCount=100000",
-      "--thriftClassName=com.google.cloud.pso.beam.generator.thrift.User"
-    };
-
     var options =
-        PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
+        PipelineOptionsFactory.fromArgs(DEFAULT_ARGS).withValidation().as(AggregationOptions.class);
     var testPipeline = TestPipeline.create(options);
     var stream = createTestStream();
-    var counted = testPipeline.apply(stream).apply(SumByFieldsAggregation.create());
+    var counted = testPipeline.apply(stream).apply(SummarizeByFieldsAggregation.sum());
 
     PAssert.that(counted)
         .satisfies(
-            counts -> {
-              LOG.info("results: " + counts.toString());
-              Supplier<Stream<AggregationResultTransport<String, Double>>> validateStream =
-                  () -> StreamSupport.stream(counts.spliterator(), false);
+            sums ->
+                AggregationsTest.<Double>validateResults(
+                    (expected, obtained) -> Assert.assertEquals(expected, obtained, 0.01),
+                    sums,
+                    KV.of("uuid#1#startup", 13.0),
+                    KV.of("uuid#2#startup", 3.0),
+                    KV.of("uuid#3#startup", 16.0)));
+    testPipeline.run().waitUntilFinish();
+  }
 
-              // we expect 3 final values
-              var finalResults = validateStream.get().filter(res -> res.ifFinalValue()).count();
-              Assert.assertEquals(3, finalResults);
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testMinAggregation() {
+    var options =
+        PipelineOptionsFactory.fromArgs(DEFAULT_ARGS).withValidation().as(AggregationOptions.class);
+    var testPipeline = TestPipeline.create(options);
+    var stream = createTestStream();
+    var counted = testPipeline.apply(stream).apply(SummarizeByFieldsAggregation.min());
 
-              // also we expect 9 values, 3 final and 6 early, since we have 3 early firings before
-              // completion (the first one with 3 results, the second one with 2 results, and the
-              // last one with only 1 result)
-              var totalResults = validateStream.get().count();
-              Assert.assertEquals(9, totalResults);
+    PAssert.that(counted)
+        .satisfies(
+            mins ->
+                AggregationsTest.<Double>validateResults(
+                    (expected, obtained) -> Assert.assertEquals(expected, obtained, 0.01),
+                    mins,
+                    KV.of("uuid#1#startup", 3.0),
+                    KV.of("uuid#2#startup", 3.0),
+                    KV.of("uuid#3#startup", 6.0)));
 
-              // final result for uuid=1 is 13.0
-              var id1FinalResult =
-                  validateStream
-                      .get()
-                      .filter(res -> "uuid#1#startup".equals(res.getAggregationKey()))
-                      .filter(res -> res.ifFinalValue())
-                      .findFirst()
-                      .get()
-                      .getResult();
+    testPipeline.run().waitUntilFinish();
+  }
 
-              Assert.assertEquals(13.0, id1FinalResult, 0.01);
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testMaxAggregation() {
+    var options =
+        PipelineOptionsFactory.fromArgs(DEFAULT_ARGS).withValidation().as(AggregationOptions.class);
+    var testPipeline = TestPipeline.create(options);
+    var stream = createTestStream();
+    var counted = testPipeline.apply(stream).apply(SummarizeByFieldsAggregation.max());
 
-              // final result for uuid=2 is 3.0
-              var id2FinalResult =
-                  validateStream
-                      .get()
-                      .filter(res -> "uuid#2#startup".equals(res.getAggregationKey()))
-                      .filter(res -> res.ifFinalValue())
-                      .findFirst()
-                      .get()
-                      .getResult();
+    PAssert.that(counted)
+        .satisfies(
+            mins ->
+                AggregationsTest.<Double>validateResults(
+                    (expected, obtained) -> Assert.assertEquals(expected, obtained, 0.01),
+                    mins,
+                    KV.of("uuid#1#startup", 5.0),
+                    KV.of("uuid#2#startup", 3.0),
+                    KV.of("uuid#3#startup", 10.0)));
 
-              Assert.assertEquals(3.0, id2FinalResult, 0.01);
+    testPipeline.run().waitUntilFinish();
+  }
 
-              // final result for uuid=1 is 16.0
-              var id3FinalResult =
-                  validateStream
-                      .get()
-                      .filter(res -> "uuid#3#startup".equals(res.getAggregationKey()))
-                      .filter(res -> res.ifFinalValue())
-                      .findFirst()
-                      .get()
-                      .getResult();
+  @SuppressWarnings("unchecked")
+  @Test
+  public void testMeanAggregation() {
+    var options =
+        PipelineOptionsFactory.fromArgs(DEFAULT_ARGS).withValidation().as(AggregationOptions.class);
+    var testPipeline = TestPipeline.create(options);
+    var stream = createTestStream();
+    var counted = testPipeline.apply(stream).apply(SummarizeByFieldsAggregation.mean());
 
-              Assert.assertEquals(16.0, id3FinalResult, 0.01);
+    PAssert.that(counted)
+        .satisfies(
+            mins ->
+                AggregationsTest.<Double>validateResults(
+                    (expected, obtained) -> Assert.assertEquals(expected, obtained, 0.01),
+                    mins,
+                    KV.of("uuid#1#startup", 4.33),
+                    KV.of("uuid#2#startup", 3.0),
+                    KV.of("uuid#3#startup", 8.0)));
 
-              return null;
-            });
     testPipeline.run().waitUntilFinish();
   }
 }
