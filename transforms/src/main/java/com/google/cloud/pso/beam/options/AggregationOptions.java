@@ -16,58 +16,15 @@
 package com.google.cloud.pso.beam.options;
 
 import com.google.cloud.pso.beam.common.formats.options.TransportFormatOptions;
-import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.Validation;
 
 /** Defines the options to configure when running a count aggregation. */
 public interface AggregationOptions extends TransportFormatOptions {
 
-  @Description("The aggregation key field names (it can be a comma separated value list).")
+  @Description("Sets the location of the aggregations configuration file.")
   @Validation.Required
-  String getAggregationKeyNames();
+  String getAggregationConfigurationLocation();
 
-  void setAggregationKeyNames(String value);
-
-  @Description("The aggregation value field names (it can be a comma separated value list).")
-  @Default.String("")
-  String getAggregationValueNames();
-
-  void setAggregationValueNames(String value);
-
-  @Description("The amount of seconds the aggregation timer will wait to trigger.")
-  @Default.Integer(30)
-  Integer getAggregationPartialTriggerSeconds();
-
-  void setAggregationPartialTriggerSeconds(Integer value);
-
-  @Description("The amount of events the aggregation timer will count to trigger.")
-  @Default.Integer(1000)
-  Integer getAggregationPartialTriggerEventCount();
-
-  void setAggregationPartialTriggerEventCount(Integer value);
-
-  @Description("Configures if the aggregation should accumulate or discard partial results.")
-  @Default.Boolean(false)
-  Boolean getAggregationDiscardPartialResults();
-
-  void setAggregationDiscardPartialResults(Boolean value);
-
-  @Description("Configures if the aggregation should trigger early results.")
-  @Default.Boolean(true)
-  Boolean getAggregationEarlyFirings();
-
-  void setAggregationEarlyFirings(Boolean value);
-
-  @Description("Configures how much time in minutes the aggregation will wait for late data.")
-  @Default.Integer(1)
-  Integer getAggregationAllowedLatenessInMinutes();
-
-  void setAggregationAllowedLatenessInMinutes(Integer value);
-
-  @Description("Configures how much time the aggregation window last.")
-  @Default.Integer(1)
-  Integer getAggregationWindowInMinutes();
-
-  void setAggregationWindowInMinutes(Integer value);
+  void setAggregationConfigurationLocation(String value);
 }

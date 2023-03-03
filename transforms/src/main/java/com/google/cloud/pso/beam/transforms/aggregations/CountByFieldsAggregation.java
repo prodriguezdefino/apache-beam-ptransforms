@@ -15,6 +15,7 @@
  */
 package com.google.cloud.pso.beam.transforms.aggregations;
 
+import com.google.cloud.pso.beam.transforms.aggregations.Configuration.*;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -39,10 +40,12 @@ public class CountByFieldsAggregation extends BaseAggregation<String, Long, Long
 
   private static final Logger LOG = LoggerFactory.getLogger(CountByFieldsAggregation.class);
 
-  CountByFieldsAggregation() {}
+  CountByFieldsAggregation(AggregationConfiguration configuration) {
+    super(configuration);
+  }
 
-  public static CountByFieldsAggregation create() {
-    return new CountByFieldsAggregation();
+  public static CountByFieldsAggregation create(AggregationConfiguration configuration) {
+    return new CountByFieldsAggregation(configuration);
   }
 
   @Override
@@ -58,7 +61,7 @@ public class CountByFieldsAggregation extends BaseAggregation<String, Long, Long
   @SuppressWarnings("unchecked")
   @Override
   protected SerializableBiFunction<List<String>, Object, String> keyExtractorFunction(
-      TransportFormatConfiguration config) {
+      InputFormatConfiguration config) {
     var handler = FORMAT_HANDLER_FUNC.apply(config);
 
     return (keyFieldList, decodedData) ->
@@ -69,7 +72,7 @@ public class CountByFieldsAggregation extends BaseAggregation<String, Long, Long
 
   @Override
   protected SerializableBiFunction<List<String>, Object, Map<String, Long>> valuesExtractorFunction(
-      TransportFormatConfiguration config) {
+      InputFormatConfiguration config) {
     return (ignoredFieldList, ignoredDecodeObject) -> Map.of("count", 1L);
   }
 

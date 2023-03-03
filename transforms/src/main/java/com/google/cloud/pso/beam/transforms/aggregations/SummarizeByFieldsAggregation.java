@@ -17,6 +17,7 @@ package com.google.cloud.pso.beam.transforms.aggregations;
 
 import static com.google.cloud.pso.beam.transforms.aggregations.BaseAggregation.FORMAT_HANDLER_FUNC;
 
+import com.google.cloud.pso.beam.transforms.aggregations.Configuration.*;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -45,8 +46,8 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
    *
    * @return the MIN aggregation
    */
-  public static MinByFieldAggregation min() {
-    return new MinByFieldAggregation();
+  public static MinByFieldAggregation min(AggregationConfiguration configuration) {
+    return new MinByFieldAggregation(configuration);
   }
 
   /**
@@ -54,16 +55,16 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
    *
    * @return the MAX aggregation
    */
-  public static MaxByFieldAggregation max() {
-    return new MaxByFieldAggregation();
+  public static MaxByFieldAggregation max(AggregationConfiguration configuration) {
+    return new MaxByFieldAggregation(configuration);
   }
   /**
    * Returns a MEAN by field aggregation PTransform.
    *
    * @return the MEAN aggregation
    */
-  public static MeanByFieldAggregation mean() {
-    return new MeanByFieldAggregation();
+  public static MeanByFieldAggregation mean(AggregationConfiguration configuration) {
+    return new MeanByFieldAggregation(configuration);
   }
 
   /**
@@ -71,8 +72,12 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
    *
    * @return the SUM aggregation
    */
-  public static SumByFieldAggregation sum() {
-    return new SumByFieldAggregation();
+  public static SumByFieldAggregation sum(AggregationConfiguration configuration) {
+    return new SumByFieldAggregation(configuration);
+  }
+
+  protected SummarizeByFieldsAggregation(AggregationConfiguration configuration) {
+    super(configuration);
   }
 
   @Override
@@ -88,7 +93,7 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
   @SuppressWarnings("unchecked")
   @Override
   protected SerializableBiFunction<List<String>, Object, String> keyExtractorFunction(
-      TransportFormatConfiguration config) {
+      InputFormatConfiguration config) {
     var handler = FORMAT_HANDLER_FUNC.apply(config);
 
     return (keyFieldList, decodedData) ->
@@ -100,7 +105,7 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
   @SuppressWarnings("unchecked")
   @Override
   protected SerializableBiFunction<List<String>, Object, Map<String, Double>>
-      valuesExtractorFunction(TransportFormatConfiguration config) {
+      valuesExtractorFunction(InputFormatConfiguration config) {
     var handler = FORMAT_HANDLER_FUNC.apply(config);
     return (valueFieldList, decodedData) ->
         valueFieldList.stream()
@@ -129,7 +134,9 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
    */
   public static class MinByFieldAggregation extends SummarizeByFieldsAggregation {
 
-    MinByFieldAggregation() {}
+    MinByFieldAggregation(AggregationConfiguration configuration) {
+      super(configuration);
+    }
 
     @Override
     protected PTransform<PCollection<KV<String, Double>>, PCollection<KV<String, Double>>>
@@ -143,7 +150,9 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
    */
   public static class MaxByFieldAggregation extends SummarizeByFieldsAggregation {
 
-    MaxByFieldAggregation() {}
+    MaxByFieldAggregation(AggregationConfiguration configuration) {
+      super(configuration);
+    }
 
     @Override
     protected PTransform<PCollection<KV<String, Double>>, PCollection<KV<String, Double>>>
@@ -158,7 +167,9 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
    */
   public static class SumByFieldAggregation extends SummarizeByFieldsAggregation {
 
-    SumByFieldAggregation() {}
+    SumByFieldAggregation(AggregationConfiguration configuration) {
+      super(configuration);
+    }
 
     @Override
     protected PTransform<PCollection<KV<String, Double>>, PCollection<KV<String, Double>>>
@@ -173,7 +184,9 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
    */
   public static class MeanByFieldAggregation extends SummarizeByFieldsAggregation {
 
-    MeanByFieldAggregation() {}
+    MeanByFieldAggregation(AggregationConfiguration configuration) {
+      super(configuration);
+    }
 
     @Override
     protected PTransform<PCollection<KV<String, Double>>, PCollection<KV<String, Double>>>

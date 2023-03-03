@@ -42,17 +42,6 @@ import org.junit.Test;
 public class AggregationsTest {
   private static final Logger LOG = Logger.getLogger(AggregationsTest.class.getName());
 
-  private static final String[] DEFAULT_ARGS = {
-    "--aggregationKeyNames=uuid",
-    "--aggregationValueNames=startup",
-    "--aggregationWindowInMinutes=15",
-    "--aggregationEarlyFirings=true",
-    "--aggregationPartialTriggerSeconds=60",
-    "--aggregationDiscardPartialResults=false",
-    "--aggregationPartialTriggerEventCount=100000",
-    "--thriftClassName=com.google.cloud.pso.beam.generator.thrift.User"
-  };
-
   @SuppressWarnings("unchecked")
   CommonTransport createTransport(User baseUser, String uuid, Long startup) {
     var handler =
@@ -132,11 +121,16 @@ public class AggregationsTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testCountAggregation() {
+    String[] args = {"--aggregationConfigurationLocation=classpath://count-config.yml"};
     var options =
-        PipelineOptionsFactory.fromArgs(DEFAULT_ARGS).withValidation().as(AggregationOptions.class);
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
+    var configuration = Configuration.AggregationConfigurations.fromOptions(options);
     var testPipeline = TestPipeline.create(options);
     var stream = createTestStream();
-    var counted = testPipeline.apply(stream).apply(CountByFieldsAggregation.create());
+    var counted =
+        testPipeline
+            .apply(stream)
+            .apply(CountByFieldsAggregation.create(configuration.configurations().get(0)));
 
     PAssert.that(counted)
         .satisfies(
@@ -154,11 +148,16 @@ public class AggregationsTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testSumAggregation() {
+    String[] args = {"--aggregationConfigurationLocation=classpath://sum-config.yml"};
     var options =
-        PipelineOptionsFactory.fromArgs(DEFAULT_ARGS).withValidation().as(AggregationOptions.class);
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
+    var configuration = Configuration.AggregationConfigurations.fromOptions(options);
     var testPipeline = TestPipeline.create(options);
     var stream = createTestStream();
-    var counted = testPipeline.apply(stream).apply(SummarizeByFieldsAggregation.sum());
+    var counted =
+        testPipeline
+            .apply(stream)
+            .apply(SummarizeByFieldsAggregation.sum(configuration.configurations().get(0)));
 
     PAssert.that(counted)
         .satisfies(
@@ -175,11 +174,16 @@ public class AggregationsTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testMinAggregation() {
+    String[] args = {"--aggregationConfigurationLocation=classpath://min-config.yml"};
     var options =
-        PipelineOptionsFactory.fromArgs(DEFAULT_ARGS).withValidation().as(AggregationOptions.class);
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
+    var configuration = Configuration.AggregationConfigurations.fromOptions(options);
     var testPipeline = TestPipeline.create(options);
     var stream = createTestStream();
-    var counted = testPipeline.apply(stream).apply(SummarizeByFieldsAggregation.min());
+    var counted =
+        testPipeline
+            .apply(stream)
+            .apply(SummarizeByFieldsAggregation.min(configuration.configurations().get(0)));
 
     PAssert.that(counted)
         .satisfies(
@@ -197,11 +201,16 @@ public class AggregationsTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testMaxAggregation() {
+    String[] args = {"--aggregationConfigurationLocation=classpath://max-config.yml"};
     var options =
-        PipelineOptionsFactory.fromArgs(DEFAULT_ARGS).withValidation().as(AggregationOptions.class);
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
+    var configuration = Configuration.AggregationConfigurations.fromOptions(options);
     var testPipeline = TestPipeline.create(options);
     var stream = createTestStream();
-    var counted = testPipeline.apply(stream).apply(SummarizeByFieldsAggregation.max());
+    var counted =
+        testPipeline
+            .apply(stream)
+            .apply(SummarizeByFieldsAggregation.max(configuration.configurations().get(0)));
 
     PAssert.that(counted)
         .satisfies(
@@ -219,11 +228,16 @@ public class AggregationsTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testMeanAggregation() {
+    String[] args = {"--aggregationConfigurationLocation=classpath://mean-config.yml"};
     var options =
-        PipelineOptionsFactory.fromArgs(DEFAULT_ARGS).withValidation().as(AggregationOptions.class);
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
+    var configuration = Configuration.AggregationConfigurations.fromOptions(options);
     var testPipeline = TestPipeline.create(options);
     var stream = createTestStream();
-    var counted = testPipeline.apply(stream).apply(SummarizeByFieldsAggregation.mean());
+    var counted =
+        testPipeline
+            .apply(stream)
+            .apply(SummarizeByFieldsAggregation.mean(configuration.configurations().get(0)));
 
     PAssert.that(counted)
         .satisfies(

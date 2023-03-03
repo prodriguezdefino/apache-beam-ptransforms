@@ -1,0 +1,19 @@
+aggregations:
+  - type: MIN
+    window:
+      length: 15m
+      lateness: 1m
+      earlyFirings:
+        enabled: true
+        count: 100000
+        time: 60s
+        accumulating: true
+    input:
+      format: THRIFT
+      thriftClassName: com.google.cloud.pso.beam.generator.thrift.User
+      avroSchemaLocation:
+    fields:
+      key: 
+        - uuid
+      values: 
+        - startup

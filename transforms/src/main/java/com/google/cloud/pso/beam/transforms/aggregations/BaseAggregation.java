@@ -17,18 +17,15 @@ package com.google.cloud.pso.beam.transforms.aggregations;
 
 import com.google.cloud.pso.beam.common.Functions;
 import com.google.cloud.pso.beam.common.formats.TransportFormats;
-import com.google.cloud.pso.beam.common.formats.options.TransportFormatOptions;
 import com.google.cloud.pso.beam.common.transport.AggregationResultTransport;
 import com.google.cloud.pso.beam.common.transport.AggregationTransport;
 import com.google.cloud.pso.beam.common.transport.EventTransport;
 import com.google.cloud.pso.beam.common.transport.Transport;
-import com.google.cloud.pso.beam.options.AggregationOptions;
+import com.google.cloud.pso.beam.transforms.aggregations.Configuration.*;
 import com.google.common.collect.Maps;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.Serializable;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -38,7 +35,6 @@ import org.apache.beam.sdk.coders.CustomCoder;
 import org.apache.beam.sdk.coders.MapCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -84,24 +80,31 @@ public abstract class BaseAggregation<Key, Value, Res>
    * A function that can create the specific handler to use on a transport object given the
    * transport format configuration.
    */
-  protected static final SerializableFunction<
-          TransportFormatConfiguration, TransportFormats.Handler>
+  protected static final SerializableFunction<InputFormatConfiguration, TransportFormats.Handler>
       FORMAT_HANDLER_FUNC =
           configuration -> {
-            var format = configuration.format();
-            var formatHandlerFactory = TransportFormats.handlerFactory(format);
-
-            return switch (format) {
-              case THRIFT -> formatHandlerFactory.apply(configuration.thriftClassName());
-              case AVRO -> formatHandlerFactory.apply(configuration.avroSchemaLocation());
-            };
+            if (configuration instanceof ThriftFormat thrift) {
+              return TransportFormats.handlerFactory(TransportFormats.Format.THRIFT)
+                  .apply(thrift.className());
+            } else if (configuration instanceof AvroFormat avro) {
+              return TransportFormats.handlerFactory(TransportFormats.Format.AVRO)
+                  .apply(avro.schemaLocation());
+            } else
+              throw new IllegalArgumentException(
+                  "Input format configuration not supported: " + configuration.toString());
           };
 
   /** A function that decodes a raw bytes array given the expected transport configuration. */
-  static final SerializableBiFunction<TransportFormatConfiguration, byte[], Object> EVENT_DECODER =
+  static final SerializableBiFunction<InputFormatConfiguration, byte[], Object> EVENT_DECODER =
       (configuration, data) -> {
         return FORMAT_HANDLER_FUNC.apply(configuration).decode(data);
       };
+
+  protected final AggregationConfiguration configuration;
+
+  protected BaseAggregation(AggregationConfiguration configuration) {
+    this.configuration = configuration;
+  }
 
   /**
    * The coder needed for the aggregation key given the expected type.
@@ -125,7 +128,7 @@ public abstract class BaseAggregation<Key, Value, Res>
    * @return The key extraction function.
    */
   protected abstract SerializableBiFunction<List<String>, Object, Key> keyExtractorFunction(
-      TransportFormatConfiguration config);
+      InputFormatConfiguration config);
 
   /**
    * Creates a function that given a list of field names and the decoded transport object, returns a
@@ -135,7 +138,7 @@ public abstract class BaseAggregation<Key, Value, Res>
    * @return The mapped values extraction function.
    */
   protected abstract SerializableBiFunction<List<String>, Object, Map<String, Value>>
-      valuesExtractorFunction(TransportFormatConfiguration config);
+      valuesExtractorFunction(InputFormatConfiguration config);
 
   /**
    * A map elements function that will transform the incoming aggregation transports into the list
@@ -155,32 +158,16 @@ public abstract class BaseAggregation<Key, Value, Res>
    */
   protected abstract PTransform<PCollection<KV<Key, Res>>, PCollection<KV<Key, Res>>> aggregation();
 
-  /**
-   * Returns the transport format configuration given the provided pipeline options.
-   *
-   * @param options the pipeline's options
-   * @return a transport format configuration
-   */
-  protected TransportFormatConfiguration transportFormatConfigurationFunction(
-      PipelineOptions options) {
-    return TransportFormatConfiguration.fromOptions(options.as(TransportFormatOptions.class));
-  }
-
   @Override
   public PCollection<AggregationResultTransport<Key, Res>> expand(
       PCollection<? extends Transport> input) {
-    var options = input.getPipeline().getOptions();
-    var windowConfig =
-        AggregationWindowConfiguration.fromOptions(options.as(AggregationOptions.class));
-    var transportConfig = transportFormatConfigurationFunction(options);
-    var aggDataConfig =
-        AggregationDataConfiguration.fromOptions(options.as(AggregationOptions.class));
     var aggTransportCoder =
         BaseAggregationTransportCoder.of(
-            Functions.curry(EVENT_DECODER).apply(transportConfig),
-            Functions.curry(keyExtractorFunction(transportConfig)).apply(aggDataConfig.keyFields()),
-            Functions.curry(valuesExtractorFunction(transportConfig))
-                .apply(aggDataConfig.valueFields()));
+            Functions.curry(EVENT_DECODER).apply(configuration.format()),
+            Functions.curry(keyExtractorFunction(configuration.format()))
+                .apply(configuration.keyFields()),
+            Functions.curry(valuesExtractorFunction(configuration.format()))
+                .apply(configuration.valueFields()));
     var aggResultTransportCoder = AggregationResultTransportCoder.of(keyCoder(), resultCoder());
 
     return input
@@ -188,14 +175,13 @@ public abstract class BaseAggregation<Key, Value, Res>
             "ToAggregationTransport",
             ParDo.of(
                 new ToAggregationTransports<>(
-                    keyExtractorFunction(transportConfig),
-                    valuesExtractorFunction(transportConfig),
-                    transportConfig,
-                    aggDataConfig)))
+                    keyExtractorFunction(configuration.format()),
+                    valuesExtractorFunction(configuration.format()),
+                    configuration)))
         .setCoder(aggTransportCoder)
         .apply("MapToKV", transportMapper())
         .apply("Flat", Flatten.iterables())
-        .apply("Window", createWindow(windowConfig))
+        .apply("Window", createWindow(configuration.window()))
         .apply("CountEventsPerKey", aggregation())
         .apply("ToAggregationResults", ParDo.of(new ToAggregationResults<>()))
         .setCoder(aggResultTransportCoder);
@@ -209,12 +195,11 @@ public abstract class BaseAggregation<Key, Value, Res>
    *     added.
    * @param elementCount when using early firings, the amount of elements that will be included
    *     before outputting
-   * @param triggerSeconds when using early firings, the max amount of time that will be waiting
-   *     before outputting data, if the element count was not already triggered before
+   * @param time when using early firings, the max amount of time that will be waiting before
+   *     outputting data, if the element count was not already triggered before
    * @return the trigger behavior for the aggregation.
    */
-  protected Trigger createTrigger(
-      Boolean earlyFiring, Integer elementCount, Integer triggerSeconds) {
+  protected Trigger createTrigger(Boolean earlyFiring, Integer elementCount, Duration time) {
     Trigger trigger = null;
     if (earlyFiring) {
       trigger =
@@ -222,8 +207,7 @@ public abstract class BaseAggregation<Key, Value, Res>
               .withEarlyFirings(
                   AfterFirst.of(
                       AfterPane.elementCountAtLeast(elementCount),
-                      AfterProcessingTime.pastFirstElementInPane()
-                          .plusDelayOf(Duration.standardSeconds(triggerSeconds))));
+                      AfterProcessingTime.pastFirstElementInPane().plusDelayOf(time)));
     } else {
       trigger = AfterWatermark.pastEndOfWindow();
     }
@@ -236,22 +220,19 @@ public abstract class BaseAggregation<Key, Value, Res>
    * @param configuration the window configuration for this aggregation
    * @return the window behavior for the aggregation
    */
-  protected Window<KV<Key, Res>> createWindow(AggregationWindowConfiguration configuration) {
+  protected Window<KV<Key, Res>> createWindow(WindowConfiguration configuration) {
     var window =
-        Window.<KV<Key, Res>>into(
-                FixedWindows.of(Duration.standardMinutes(configuration.windowLengthInMinutes())))
+        Window.<KV<Key, Res>>into(FixedWindows.of(configuration.length()))
             .triggering(
                 createTrigger(
-                    configuration.windowEarlyFirings(),
-                    configuration.partialResultElementCountTrigger(),
-                    configuration.partialResultTimeInSeconds()));
+                    configuration.withEarlyFirings(),
+                    configuration.earlyFireCount(),
+                    configuration.earlyFiringTime()));
 
-    if (configuration.allowedLatenessInMinutes() > 0)
+    if (configuration.lateness().isLongerThan(Duration.ZERO))
       window =
-          window.withAllowedLateness(
-              Duration.standardMinutes(configuration.allowedLatenessInMinutes()),
-              Window.ClosingBehavior.FIRE_ALWAYS);
-    if (configuration.discardPartialResults()) {
+          window.withAllowedLateness(configuration.lateness(), Window.ClosingBehavior.FIRE_ALWAYS);
+    if (!configuration.shouldAccumulatePanes()) {
       window = window.discardingFiredPanes();
     } else {
       window = window.accumulatingFiredPanes();
@@ -259,73 +240,27 @@ public abstract class BaseAggregation<Key, Value, Res>
     return window;
   }
 
-  /** The window configuration record. */
-  public record AggregationWindowConfiguration(
-      Integer windowLengthInMinutes,
-      Boolean windowEarlyFirings,
-      Integer allowedLatenessInMinutes,
-      Boolean discardPartialResults,
-      Integer partialResultElementCountTrigger,
-      Integer partialResultTimeInSeconds) {
-
-    static AggregationWindowConfiguration fromOptions(AggregationOptions opts) {
-      return new AggregationWindowConfiguration(
-          opts.getAggregationWindowInMinutes(),
-          opts.getAggregationEarlyFirings(),
-          opts.getAggregationAllowedLatenessInMinutes(),
-          opts.getAggregationDiscardPartialResults(),
-          opts.getAggregationPartialTriggerEventCount(),
-          opts.getAggregationPartialTriggerSeconds());
-    }
-  }
-
-  /**
-   * The transport format configuration. Indicates the format which defines what configuration to
-   * use, a class name in the case of Thrift or an Avro schema location if Avro is the format.
-   */
-  public record TransportFormatConfiguration(
-      TransportFormats.Format format, String thriftClassName, String avroSchemaLocation)
-      implements Serializable {
-    static TransportFormatConfiguration fromOptions(TransportFormatOptions opts) {
-      return new TransportFormatConfiguration(
-          opts.getTransportFormat(), opts.getThriftClassName(), opts.getAvroSchemaLocation());
-    }
-  }
-
-  /** The configuration for the data to be aggregated. */
-  public record AggregationDataConfiguration(List<String> keyFields, List<String> valueFields)
-      implements Serializable {
-    static AggregationDataConfiguration fromOptions(AggregationOptions opts) {
-      return new AggregationDataConfiguration(
-          Arrays.asList(opts.getAggregationKeyNames().split(",")),
-          Arrays.asList(opts.getAggregationValueNames().split(",")));
-    }
-  }
-
   static class ToAggregationTransports<Key, Value>
       extends DoFn<Transport, BaseAggregationTransport<Key, Value>> {
 
     private final SerializableBiFunction<List<String>, Object, Key> keyExtractor;
     private final SerializableBiFunction<List<String>, Object, Map<String, Value>> valuesExtractor;
-    private final TransportFormatConfiguration transportConfig;
-    private final AggregationDataConfiguration dataConfig;
+    private final AggregationConfiguration config;
 
     public ToAggregationTransports(
         SerializableBiFunction<List<String>, Object, Key> keyExtractor,
         SerializableBiFunction<List<String>, Object, Map<String, Value>> valuesExtractor,
-        TransportFormatConfiguration transportConfig,
-        AggregationDataConfiguration dataConfig) {
+        AggregationConfiguration config) {
       this.keyExtractor = keyExtractor;
       this.valuesExtractor = valuesExtractor;
-      this.transportConfig = transportConfig;
-      this.dataConfig = dataConfig;
+      this.config = config;
     }
 
     @ProcessElement
     public void processElement(ProcessContext context) {
       context.output(
           BaseAggregationTransport.fromTransportAndConfigurationAndExtractors(
-              context.element(), transportConfig, dataConfig, keyExtractor, valuesExtractor));
+              context.element(), config, keyExtractor, valuesExtractor));
     }
   }
 
@@ -500,18 +435,17 @@ public abstract class BaseAggregation<Key, Value, Res>
     public static <Key, Value>
         BaseAggregationTransport<Key, Value> fromTransportAndConfigurationAndExtractors(
             Transport transport,
-            TransportFormatConfiguration transportConfig,
-            AggregationDataConfiguration aggDataConfig,
+            AggregationConfiguration configuration,
             SerializableBiFunction<List<String>, Object, Key> keyByFieldsExtractor,
             SerializableBiFunction<List<String>, Object, Map<String, Value>>
                 valuesByFieldsExtractor) {
 
       if (transport instanceof EventTransport ev) {
-        var curriedDecoder = Functions.curry(EVENT_DECODER).apply(transportConfig);
+        var curriedDecoder = Functions.curry(EVENT_DECODER).apply(configuration.format());
         var curriedKeyExtractor =
-            Functions.curry(keyByFieldsExtractor).apply(aggDataConfig.keyFields());
+            Functions.curry(keyByFieldsExtractor).apply(configuration.keyFields());
         var curriedValuesExtractor =
-            Functions.curry(valuesByFieldsExtractor).apply(aggDataConfig.valueFields());
+            Functions.curry(valuesByFieldsExtractor).apply(configuration.valueFields());
 
         return new BaseAggregationTransport<>(
             ev.getId(),
