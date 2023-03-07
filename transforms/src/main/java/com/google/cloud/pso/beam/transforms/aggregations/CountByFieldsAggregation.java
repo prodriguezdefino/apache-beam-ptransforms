@@ -41,10 +41,17 @@ public class CountByFieldsAggregation extends BaseAggregation<String, Long, Long
   private static final Logger LOG = LoggerFactory.getLogger(CountByFieldsAggregation.class);
 
   CountByFieldsAggregation(AggregationConfiguration configuration) {
-    super(configuration);
+    super(configuration, "CountByField");
   }
 
-  public static CountByFieldsAggregation create(AggregationConfiguration configuration) {
+  /**
+   * Creates a Count aggregation using the provided configuration.
+   *
+   * @param configuration Count configuration object specifying the window settings and the fields
+   *     used to construct the aggregation key.
+   * @return The Count PTransform
+   */
+  public static BaseAggregation<String, Long, Long> create(AggregationConfiguration configuration) {
     return new CountByFieldsAggregation(configuration);
   }
 
@@ -60,9 +67,8 @@ public class CountByFieldsAggregation extends BaseAggregation<String, Long, Long
 
   @SuppressWarnings("unchecked")
   @Override
-  protected SerializableBiFunction<List<String>, Object, String> keyExtractorFunction(
-      InputFormatConfiguration config) {
-    var handler = FORMAT_HANDLER_FUNC.apply(config);
+  protected SerializableBiFunction<List<String>, Object, String> keyExtractorFunction() {
+    var handler = FORMAT_HANDLER_FUNC.apply(configuration.format());
 
     return (keyFieldList, decodedData) ->
         keyFieldList.stream()
@@ -71,8 +77,8 @@ public class CountByFieldsAggregation extends BaseAggregation<String, Long, Long
   }
 
   @Override
-  protected SerializableBiFunction<List<String>, Object, Map<String, Long>> valuesExtractorFunction(
-      InputFormatConfiguration config) {
+  protected SerializableBiFunction<List<String>, Object, Map<String, Long>>
+      valuesExtractorFunction() {
     return (ignoredFieldList, ignoredDecodeObject) -> Map.of("count", 1L);
   }
 

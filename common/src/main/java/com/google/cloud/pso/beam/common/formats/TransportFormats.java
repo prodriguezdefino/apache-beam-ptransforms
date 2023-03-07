@@ -23,8 +23,11 @@ import static org.apache.avro.Schema.Type.INT;
 import static org.apache.avro.Schema.Type.LONG;
 
 import com.google.common.collect.Maps;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
@@ -54,20 +57,24 @@ public class TransportFormats {
 
   public enum Format {
     THRIFT,
-    AVRO
+    AVRO,
+    AGGREGATION_RESULT
   }
 
   public static Function<String, Handler> handlerFactory(Format format) {
     return switch (format) {
       case THRIFT -> className ->
-          HANDLERS.computeIfAbsent(className, cName -> new ThriftHandler(cName));
+          HANDLERS.computeIfAbsent(className, key -> new ThriftHandler(key));
       case AVRO -> avroSchemaLocation ->
+          HANDLERS.computeIfAbsent(avroSchemaLocation, key -> new AvroGenericRecordHandler(key));
+      case AGGREGATION_RESULT -> dummy ->
           HANDLERS.computeIfAbsent(
-              avroSchemaLocation, schemaLocation -> new AvroGenericRecordHandler(schemaLocation));
+              Format.AGGREGATION_RESULT.name(), key -> new AggregationResultValueHandler());
     };
   }
 
-  public sealed interface Handler<T> permits ThriftHandler, AvroGenericRecordHandler {
+  public sealed interface Handler<T>
+      permits ThriftHandler, AvroGenericRecordHandler, AggregationResultValueHandler {
 
     byte[] encode(T element);
 
@@ -78,6 +85,91 @@ public class TransportFormats {
     Double doubleValue(T element, String propertyName);
 
     String stringValue(T element, String propertyName);
+  }
+
+  public record AggregationResultValueHandler()
+      implements Handler<Map<String, Map<String, Number>>>, Serializable {
+
+    @Override
+    public byte[] encode(Map<String, Map<String, Number>> element) {
+      try {
+        var baos = new ByteArrayOutputStream();
+        try (var objectOutputStream = new ObjectOutputStream(baos)) {
+          objectOutputStream.writeObject(element);
+          objectOutputStream.flush();
+        }
+        return baos.toByteArray();
+      } catch (IOException ex) {
+        throw new IllegalArgumentException(
+            "The serialization of the provided element was not possible.", ex);
+      }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public Map<String, Map<String, Number>> decode(byte[] encodedElement) {
+      try (var ois = new ObjectInputStream(new ByteArrayInputStream(encodedElement)); ) {
+        return (Map<String, Map<String, Number>>) ois.readObject();
+      } catch (IOException | ClassNotFoundException ex) {
+        throw new IllegalArgumentException(
+            "The provided byte array did not conform the expected structure.", ex);
+      }
+    }
+
+    String validateAndRetrieveKey(Map<String, Map<String, Number>> map) {
+      // outer map should only contain 1 entry as aggregation field as key
+      return map.keySet().stream()
+          .findFirst()
+          .orElseThrow(
+              () ->
+                  new IllegalArgumentException(
+                      "The provided element ("
+                          + map
+                          + ") does not have the expected structure. "
+                          + "This value handler assumes the encoded value as an aggregation "
+                          + "result structure map<aggregation-key-field, <result, value>>."));
+    }
+
+    @Override
+    public Long longValue(Map<String, Map<String, Number>> element, String propertyName) {
+      var storedKey = validateAndRetrieveKey(element);
+      return element.get(storedKey).get(propertyName).longValue();
+    }
+
+    @Override
+    public Double doubleValue(Map<String, Map<String, Number>> element, String propertyName) {
+      var storedKey = validateAndRetrieveKey(element);
+      return element.get(storedKey).get(propertyName).doubleValue();
+    }
+
+    /**
+     * Assumes is used to retrieve the aggregation's key. It discards previously computed
+     * aggregation key components (since this is coming from a previous aggregation they keys will
+     * take the form [field#field-value#result-info].
+     *
+     * @param element the decoded map for the aggregation result.
+     * @param propertyName the key property name
+     * @return the aggregation key value.
+     */
+    @Override
+    public String stringValue(Map<String, Map<String, Number>> element, String propertyName) {
+      // outer map should only contain 1 entry as aggregation field as key
+      var storedKey = element.keySet().stream().findFirst();
+      return storedKey
+          .filter(k -> k.contains(propertyName))
+          // remove the property from the aggregation key and then discard previously computed
+          // aggregation key components from key
+          .map(k -> k.replace(propertyName + "#", "").split("#")[0])
+          .orElseThrow(
+              () ->
+                  new IllegalArgumentException(
+                      "The property provided ("
+                          + propertyName
+                          + ") does not match the key field stored in the value: "
+                          + storedKey
+                          + ". This value handler assumes the encoded value as an aggregation "
+                          + "result structure map<aggregation-key-field, <result, value>>."));
+    }
   }
 
   public record ThriftHandler(Format format, ThriftClass thriftClass)

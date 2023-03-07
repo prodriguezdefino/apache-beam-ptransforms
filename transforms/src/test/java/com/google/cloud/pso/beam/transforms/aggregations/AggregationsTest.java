@@ -83,12 +83,12 @@ public class AggregationsTest {
   }
 
   @SafeVarargs
-  private static <Res> Void validateResults(
+  private static <Key, Res> Void validateResultsWithEarlyFirings(
       BiConsumer<Res, Res> validateFunction,
-      Iterable<AggregationResultTransport<String, Res>> results,
+      Iterable<AggregationResultTransport<Key, Res>> results,
       KV<String, Res>... expectations) {
     LOG.info("results: " + results.toString());
-    Supplier<Stream<AggregationResultTransport<String, Res>>> validateStream =
+    Supplier<Stream<AggregationResultTransport<Key, Res>>> validateStream =
         () -> StreamSupport.stream(results.spliterator(), false);
 
     // we expect 3 final values
@@ -118,7 +118,40 @@ public class AggregationsTest {
     return null;
   }
 
-  @SuppressWarnings("unchecked")
+  @SafeVarargs
+  private static <Key, Res> Void validateResultsWithoutEarlyFirings(
+      BiConsumer<Res, Res> validateFunction,
+      Iterable<AggregationResultTransport<Key, Res>> results,
+      KV<String, Res>... expectations) {
+    LOG.info("results: " + results.toString());
+    Supplier<Stream<AggregationResultTransport<Key, Res>>> validateStream =
+        () -> StreamSupport.stream(results.spliterator(), false);
+
+    // we expect 3 final values
+    var finalResults = validateStream.get().filter(res -> res.ifFinalValue()).count();
+    Assert.assertEquals(3, finalResults);
+
+    // there are only final values so we expect a total of 3 results
+    var totalResults = validateStream.get().count();
+    Assert.assertEquals(3, totalResults);
+
+    for (var expected : expectations) {
+      // check final result for key
+      var idFinalResult =
+          validateStream
+              .get()
+              .filter(res -> expected.getKey().equals(res.getAggregationKey()))
+              .filter(res -> res.ifFinalValue())
+              .findFirst()
+              .get()
+              .getResult();
+
+      validateFunction.accept(idFinalResult, expected.getValue());
+    }
+
+    return null;
+  }
+
   @Test
   public void testCountAggregation() {
     String[] args = {"--aggregationConfigurationLocation=classpath://count-config.yml"};
@@ -135,7 +168,7 @@ public class AggregationsTest {
     PAssert.that(counted)
         .satisfies(
             counts ->
-                AggregationsTest.<Long>validateResults(
+                AggregationsTest.<String, Long>validateResultsWithEarlyFirings(
                     (expected, obtained) -> Assert.assertEquals(expected, obtained),
                     counts,
                     KV.of("uuid#1#count", 3L),
@@ -145,7 +178,6 @@ public class AggregationsTest {
     testPipeline.run().waitUntilFinish();
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   public void testSumAggregation() {
     String[] args = {"--aggregationConfigurationLocation=classpath://sum-config.yml"};
@@ -162,16 +194,15 @@ public class AggregationsTest {
     PAssert.that(counted)
         .satisfies(
             sums ->
-                AggregationsTest.<Double>validateResults(
+                AggregationsTest.<String, Double>validateResultsWithEarlyFirings(
                     (expected, obtained) -> Assert.assertEquals(expected, obtained, 0.01),
                     sums,
-                    KV.of("uuid#1#startup", 13.0),
-                    KV.of("uuid#2#startup", 3.0),
-                    KV.of("uuid#3#startup", 16.0)));
+                    KV.of("uuid#1#sum#startup", 13.0),
+                    KV.of("uuid#2#sum#startup", 3.0),
+                    KV.of("uuid#3#sum#startup", 16.0)));
     testPipeline.run().waitUntilFinish();
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   public void testMinAggregation() {
     String[] args = {"--aggregationConfigurationLocation=classpath://min-config.yml"};
@@ -188,17 +219,16 @@ public class AggregationsTest {
     PAssert.that(counted)
         .satisfies(
             mins ->
-                AggregationsTest.<Double>validateResults(
+                AggregationsTest.<String, Double>validateResultsWithEarlyFirings(
                     (expected, obtained) -> Assert.assertEquals(expected, obtained, 0.01),
                     mins,
-                    KV.of("uuid#1#startup", 3.0),
-                    KV.of("uuid#2#startup", 3.0),
-                    KV.of("uuid#3#startup", 6.0)));
+                    KV.of("uuid#1#min#startup", 3.0),
+                    KV.of("uuid#2#min#startup", 3.0),
+                    KV.of("uuid#3#min#startup", 6.0)));
 
     testPipeline.run().waitUntilFinish();
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   public void testMaxAggregation() {
     String[] args = {"--aggregationConfigurationLocation=classpath://max-config.yml"};
@@ -215,17 +245,16 @@ public class AggregationsTest {
     PAssert.that(counted)
         .satisfies(
             mins ->
-                AggregationsTest.<Double>validateResults(
+                AggregationsTest.<String, Double>validateResultsWithEarlyFirings(
                     (expected, obtained) -> Assert.assertEquals(expected, obtained, 0.01),
                     mins,
-                    KV.of("uuid#1#startup", 5.0),
-                    KV.of("uuid#2#startup", 3.0),
-                    KV.of("uuid#3#startup", 10.0)));
+                    KV.of("uuid#1#max#startup", 5.0),
+                    KV.of("uuid#2#max#startup", 3.0),
+                    KV.of("uuid#3#max#startup", 10.0)));
 
     testPipeline.run().waitUntilFinish();
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   public void testMeanAggregation() {
     String[] args = {"--aggregationConfigurationLocation=classpath://mean-config.yml"};
@@ -242,12 +271,62 @@ public class AggregationsTest {
     PAssert.that(counted)
         .satisfies(
             mins ->
-                AggregationsTest.<Double>validateResults(
+                AggregationsTest.<String, Double>validateResultsWithEarlyFirings(
                     (expected, obtained) -> Assert.assertEquals(expected, obtained, 0.01),
                     mins,
-                    KV.of("uuid#1#startup", 4.33),
-                    KV.of("uuid#2#startup", 3.0),
-                    KV.of("uuid#3#startup", 8.0)));
+                    KV.of("uuid#1#mean#startup", 4.33),
+                    KV.of("uuid#2#mean#startup", 3.0),
+                    KV.of("uuid#3#mean#startup", 8.0)));
+
+    testPipeline.run().waitUntilFinish();
+  }
+
+  @Test
+  public void testSimpleConfigurableAggregation() {
+    String[] args = {"--aggregationConfigurationLocation=classpath://mean-config.yml"};
+    var options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
+    var testPipeline = TestPipeline.create(options);
+    var stream = createTestStream();
+    var counted = testPipeline.apply(stream).apply(ConfigurableAggregation.create());
+
+    PAssert.that(counted)
+        .satisfies(
+            mins ->
+                AggregationsTest.validateResultsWithEarlyFirings(
+                    (expected, obtained) ->
+                        Assert.assertEquals((Double) expected, (Double) obtained, 0.01),
+                    mins,
+                    KV.of("uuid#1#mean#startup", 4.33),
+                    KV.of("uuid#2#mean#startup", 3.0),
+                    KV.of("uuid#3#mean#startup", 8.0)));
+
+    testPipeline.run().waitUntilFinish();
+  }
+
+  @Test
+  public void testMultipleConfigurableAggregations() {
+    // this configuration computes a count per key on 5min windows and then sums those keys on 15min
+    // windows, so we expect sums of results => key components are original key + value + "sum" +
+    // "result"
+    String[] args = {"--aggregationConfigurationLocation=classpath://multiple-config.yml"};
+    var options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
+    var testPipeline = TestPipeline.create(options);
+    var stream = createTestStream();
+    var counted = testPipeline.apply(stream).apply(ConfigurableAggregation.create());
+
+    PAssert.that(counted)
+        .satisfies(
+            mins ->
+                AggregationsTest.validateResultsWithoutEarlyFirings(
+                    (expected, obtained) -> {
+                      Assert.assertEquals((Double) expected, (Double) obtained, 0.01);
+                    },
+                    mins,
+                    KV.of("uuid#1#sum#result", 3.0),
+                    KV.of("uuid#2#sum#result", 1.0),
+                    KV.of("uuid#3#sum#result", 2.0)));
 
     testPipeline.run().waitUntilFinish();
   }

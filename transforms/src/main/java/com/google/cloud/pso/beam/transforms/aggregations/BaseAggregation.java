@@ -83,15 +83,15 @@ public abstract class BaseAggregation<Key, Value, Res>
   protected static final SerializableFunction<InputFormatConfiguration, TransportFormats.Handler>
       FORMAT_HANDLER_FUNC =
           configuration -> {
-            if (configuration instanceof ThriftFormat thrift) {
-              return TransportFormats.handlerFactory(TransportFormats.Format.THRIFT)
-                  .apply(thrift.className());
-            } else if (configuration instanceof AvroFormat avro) {
-              return TransportFormats.handlerFactory(TransportFormats.Format.AVRO)
-                  .apply(avro.schemaLocation());
-            } else
-              throw new IllegalArgumentException(
-                  "Input format configuration not supported: " + configuration.toString());
+            return switch (configuration.format()) {
+              case AVRO -> TransportFormats.handlerFactory(TransportFormats.Format.AVRO)
+                  .apply(((AvroFormat) configuration).schemaLocation());
+              case THRIFT -> TransportFormats.handlerFactory(TransportFormats.Format.THRIFT)
+                  .apply(((ThriftFormat) configuration).className());
+              case AGGREGATION_RESULT -> TransportFormats.handlerFactory(
+                      TransportFormats.Format.AGGREGATION_RESULT)
+                  .apply(null);
+            };
           };
 
   /** A function that decodes a raw bytes array given the expected transport configuration. */
@@ -102,7 +102,8 @@ public abstract class BaseAggregation<Key, Value, Res>
 
   protected final AggregationConfiguration configuration;
 
-  protected BaseAggregation(AggregationConfiguration configuration) {
+  protected BaseAggregation(AggregationConfiguration configuration, String name) {
+    super(name);
     this.configuration = configuration;
   }
 
@@ -114,9 +115,9 @@ public abstract class BaseAggregation<Key, Value, Res>
   protected abstract Coder<Key> keyCoder();
 
   /**
-   * The coder needed for the aggregation values given the expected type.
+   * The coder needed for the aggregation result given the expected type.
    *
-   * @return A coder for the aggregation's values
+   * @return A coder for the aggregation's result
    */
   protected abstract Coder<Res> resultCoder();
 
@@ -124,21 +125,18 @@ public abstract class BaseAggregation<Key, Value, Res>
    * Creates a function that given a list of field names and the decoded transport object, returns
    * the key expected for the aggregation.
    *
-   * @param config The transport format configuration
    * @return The key extraction function.
    */
-  protected abstract SerializableBiFunction<List<String>, Object, Key> keyExtractorFunction(
-      InputFormatConfiguration config);
+  protected abstract SerializableBiFunction<List<String>, Object, Key> keyExtractorFunction();
 
   /**
    * Creates a function that given a list of field names and the decoded transport object, returns a
    * map of the desired values mapped by their name.
    *
-   * @param config The transport format configuration
    * @return The mapped values extraction function.
    */
   protected abstract SerializableBiFunction<List<String>, Object, Map<String, Value>>
-      valuesExtractorFunction(InputFormatConfiguration config);
+      valuesExtractorFunction();
 
   /**
    * A map elements function that will transform the incoming aggregation transports into the list
@@ -164,26 +162,23 @@ public abstract class BaseAggregation<Key, Value, Res>
     var aggTransportCoder =
         BaseAggregationTransportCoder.of(
             Functions.curry(EVENT_DECODER).apply(configuration.format()),
-            Functions.curry(keyExtractorFunction(configuration.format()))
-                .apply(configuration.keyFields()),
-            Functions.curry(valuesExtractorFunction(configuration.format()))
-                .apply(configuration.valueFields()));
+            Functions.curry(keyExtractorFunction()).apply(configuration.keyFields()),
+            Functions.curry(valuesExtractorFunction()).apply(configuration.valueFields()));
     var aggResultTransportCoder = AggregationResultTransportCoder.of(keyCoder(), resultCoder());
+    var aggregationName = configuration.name();
 
     return input
         .apply(
             "ToAggregationTransport",
             ParDo.of(
                 new ToAggregationTransports<>(
-                    keyExtractorFunction(configuration.format()),
-                    valuesExtractorFunction(configuration.format()),
-                    configuration)))
+                    keyExtractorFunction(), valuesExtractorFunction(), configuration)))
         .setCoder(aggTransportCoder)
         .apply("MapToKV", transportMapper())
         .apply("Flat", Flatten.iterables())
         .apply("Window", createWindow(configuration.window()))
-        .apply("CountEventsPerKey", aggregation())
-        .apply("ToAggregationResults", ParDo.of(new ToAggregationResults<>()))
+        .apply(aggregationName, aggregation())
+        .apply("ToAggregationResults", ParDo.of(new ToAggregationResults<>(aggregationName)))
         .setCoder(aggResultTransportCoder);
   }
 
@@ -267,11 +262,17 @@ public abstract class BaseAggregation<Key, Value, Res>
   static class ToAggregationResults<Key, Res>
       extends DoFn<KV<Key, Res>, AggregationResultTransport<Key, Res>> {
 
+    private final String aggregationName;
+
+    public ToAggregationResults(String aggregationName) {
+      this.aggregationName = aggregationName;
+    }
+
     @ProcessElement
     public void processElement(ProcessContext context, BoundedWindow window, PaneInfo pane) {
       context.output(
           BaseAggregationResultTransport.fromKV(
-              context.element(), Instant.now(), window.maxTimestamp(), pane));
+              context.element(), Instant.now(), window.maxTimestamp(), pane, aggregationName));
     }
   }
 
@@ -285,17 +286,17 @@ public abstract class BaseAggregation<Key, Value, Res>
     // A message's messageId may be null at some moments in the execution
     private static final Coder<String> ID_CODER = NullableCoder.of(StringUtf8Coder.of());
 
-    private final SerializableFunction<byte[], Object> dataDecoder;
-    private final SerializableFunction<Object, Key> keyExtractor;
-    private final SerializableFunction<Object, Map<String, Value>> valuesExtractor;
+    private final SerializableFunction<byte[], Object> dataDecoderFunction;
+    private final SerializableFunction<Object, Key> keyExtractorFunction;
+    private final SerializableFunction<Object, Map<String, Value>> valuesExtractorFunction;
 
     public BaseAggregationTransportCoder(
-        SerializableFunction<byte[], Object> dataDecoder,
-        SerializableFunction<Object, Key> keyExtractor,
-        SerializableFunction<Object, Map<String, Value>> valuesExtractor) {
-      this.dataDecoder = dataDecoder;
-      this.keyExtractor = keyExtractor;
-      this.valuesExtractor = valuesExtractor;
+        SerializableFunction<byte[], Object> dataDecoderFunction,
+        SerializableFunction<Object, Key> keyExtractorFunction,
+        SerializableFunction<Object, Map<String, Value>> valuesExtractorFunction) {
+      this.dataDecoderFunction = dataDecoderFunction;
+      this.keyExtractorFunction = keyExtractorFunction;
+      this.valuesExtractorFunction = valuesExtractorFunction;
     }
 
     public static <Key, Value> BaseAggregationTransportCoder<Key, Value> of(
@@ -319,7 +320,7 @@ public abstract class BaseAggregation<Key, Value, Res>
       var headers = HEADERS_CODER.decode(inStream);
       var id = ID_CODER.decode(inStream);
       return new BaseAggregationTransport<>(
-          id, headers, data, dataDecoder, keyExtractor, valuesExtractor);
+          id, headers, data, dataDecoderFunction, keyExtractorFunction, valuesExtractorFunction);
     }
   }
 
@@ -432,6 +433,11 @@ public abstract class BaseAggregation<Key, Value, Res>
       return mappedValues;
     }
 
+    public BaseAggregationTransport<Key, Value> withDecodedData(Object decoded) {
+      this.decodedData = decoded;
+      return this;
+    }
+
     public static <Key, Value>
         BaseAggregationTransport<Key, Value> fromTransportAndConfigurationAndExtractors(
             Transport transport,
@@ -454,15 +460,33 @@ public abstract class BaseAggregation<Key, Value, Res>
             curriedDecoder,
             curriedKeyExtractor,
             curriedValuesExtractor);
-      } else if (transport instanceof AggregationResultTransport agg) {
-        SerializableFunction<byte[], Object> decoder = data -> agg.getResult();
+      } else if (transport instanceof AggregationResultTransport) {
+        // we are processing a chained aggregation, the transport is the result of a previous
+        // aggregation
         @SuppressWarnings("unchecked")
-        SerializableFunction<Object, Key> keyExtractor = data -> (Key) agg.getAggregationKey();
+        var agg = (AggregationResultTransport<String, ? extends Number>) transport;
+        // create the constant aggregation key and mapped values
+        var mappedValues = Map.of("result", agg.getResult());
+        var aggregationKey = agg.getAggregationKey();
+        var decodedData = Map.of(aggregationKey, mappedValues);
+        var dataDecoder =
+            TransportFormats.handlerFactory(TransportFormats.Format.AGGREGATION_RESULT).apply(null);
         @SuppressWarnings("unchecked")
-        SerializableFunction<Object, Map<String, Value>> valuesExtractor =
-            data -> Map.of("result", (Value) agg.getResult());
+        var encodedData = dataDecoder.encode(decodedData);
+        var curriedKeyExtractor =
+            Functions.curry(keyByFieldsExtractor).apply(configuration.keyFields());
+        var curriedValuesExtractor =
+            Functions.curry(valuesByFieldsExtractor).apply(configuration.valueFields());
+
+        // create the aggregation transport with pre populated data
         return new BaseAggregationTransport<>(
-            agg.getId(), agg.getHeaders(), null, decoder, keyExtractor, valuesExtractor);
+                agg.getId(),
+                agg.getHeaders(),
+                encodedData,
+                byteArray -> dataDecoder.decode(byteArray),
+                curriedKeyExtractor,
+                curriedValuesExtractor)
+            .withDecodedData(decodedData);
       } else
         throw new IllegalArgumentException(
             "Currently aggregations can only be computed against event and aggregation result transports");
@@ -500,7 +524,11 @@ public abstract class BaseAggregation<Key, Value, Res>
     }
 
     public static <Key, Res> AggregationResultTransport<Key, Res> fromKV(
-        KV<Key, Res> kv, Instant elementTimestamp, Instant windowEndTimestamp, PaneInfo pane) {
+        KV<Key, Res> kv,
+        Instant elementTimestamp,
+        Instant windowEndTimestamp,
+        PaneInfo pane,
+        String aggregationName) {
       var headers = Maps.<String, String>newHashMap();
       headers.put(AggregationResultTransport.EVENT_TIME_KEY, elementTimestamp.toString());
       headers.put(
@@ -510,7 +538,7 @@ public abstract class BaseAggregation<Key, Value, Res>
           AggregationResultTransport.AGGREGATION_VALUE_IS_FINAL_KEY, String.valueOf(pane.isLast()));
 
       return new BaseAggregationResultTransport<>(kv.getKey(), kv.getValue(), headers)
-          .withAggregationName("count");
+          .withAggregationName(aggregationName);
     }
   }
 }

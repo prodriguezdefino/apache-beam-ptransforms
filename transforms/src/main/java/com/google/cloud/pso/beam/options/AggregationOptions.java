@@ -15,12 +15,12 @@
  */
 package com.google.cloud.pso.beam.options;
 
-import com.google.cloud.pso.beam.common.formats.options.TransportFormatOptions;
 import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
 /** Defines the options to configure when running a count aggregation. */
-public interface AggregationOptions extends TransportFormatOptions {
+public interface AggregationOptions extends PipelineOptions {
 
   @Description("Sets the location of the aggregations configuration file.")
   @Validation.Required

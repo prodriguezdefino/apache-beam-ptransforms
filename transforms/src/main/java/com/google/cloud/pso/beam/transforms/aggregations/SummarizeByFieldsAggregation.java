@@ -44,6 +44,7 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
   /**
    * Returns a MIN by field aggregation PTransform.
    *
+   * @param configuration the Min configuration
    * @return the MIN aggregation
    */
   public static MinByFieldAggregation min(AggregationConfiguration configuration) {
@@ -53,6 +54,7 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
   /**
    * Returns a MAX by field aggregation PTransform.
    *
+   * @param configuration the Max configuration
    * @return the MAX aggregation
    */
   public static MaxByFieldAggregation max(AggregationConfiguration configuration) {
@@ -61,6 +63,7 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
   /**
    * Returns a MEAN by field aggregation PTransform.
    *
+   * @param configuration the Mean configuration
    * @return the MEAN aggregation
    */
   public static MeanByFieldAggregation mean(AggregationConfiguration configuration) {
@@ -70,14 +73,15 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
   /**
    * Returns a SUM by field aggregation PTransform.
    *
+   * @param configuration the Sum configuration
    * @return the SUM aggregation
    */
   public static SumByFieldAggregation sum(AggregationConfiguration configuration) {
     return new SumByFieldAggregation(configuration);
   }
 
-  protected SummarizeByFieldsAggregation(AggregationConfiguration configuration) {
-    super(configuration);
+  protected SummarizeByFieldsAggregation(AggregationConfiguration configuration, String name) {
+    super(configuration, name);
   }
 
   @Override
@@ -92,9 +96,8 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
 
   @SuppressWarnings("unchecked")
   @Override
-  protected SerializableBiFunction<List<String>, Object, String> keyExtractorFunction(
-      InputFormatConfiguration config) {
-    var handler = FORMAT_HANDLER_FUNC.apply(config);
+  protected SerializableBiFunction<List<String>, Object, String> keyExtractorFunction() {
+    var handler = FORMAT_HANDLER_FUNC.apply(configuration.format());
 
     return (keyFieldList, decodedData) ->
         keyFieldList.stream()
@@ -105,11 +108,15 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
   @SuppressWarnings("unchecked")
   @Override
   protected SerializableBiFunction<List<String>, Object, Map<String, Double>>
-      valuesExtractorFunction(InputFormatConfiguration config) {
-    var handler = FORMAT_HANDLER_FUNC.apply(config);
+      valuesExtractorFunction() {
+    var handler = FORMAT_HANDLER_FUNC.apply(configuration.format());
     return (valueFieldList, decodedData) ->
         valueFieldList.stream()
-            .map(valueField -> KV.of(valueField, handler.doubleValue(decodedData, valueField)))
+            .map(
+                valueField ->
+                    KV.of(
+                        configuration.name() + "#" + valueField,
+                        handler.doubleValue(decodedData, valueField)))
             .collect(Collectors.toMap(KV::getKey, KV::getValue));
   }
 
@@ -135,7 +142,7 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
   public static class MinByFieldAggregation extends SummarizeByFieldsAggregation {
 
     MinByFieldAggregation(AggregationConfiguration configuration) {
-      super(configuration);
+      super(configuration, "MinByField");
     }
 
     @Override
@@ -151,7 +158,7 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
   public static class MaxByFieldAggregation extends SummarizeByFieldsAggregation {
 
     MaxByFieldAggregation(AggregationConfiguration configuration) {
-      super(configuration);
+      super(configuration, "MaxByField");
     }
 
     @Override
@@ -168,7 +175,7 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
   public static class SumByFieldAggregation extends SummarizeByFieldsAggregation {
 
     SumByFieldAggregation(AggregationConfiguration configuration) {
-      super(configuration);
+      super(configuration, "SumByField");
     }
 
     @Override
@@ -185,7 +192,7 @@ public abstract class SummarizeByFieldsAggregation extends BaseAggregation<Strin
   public static class MeanByFieldAggregation extends SummarizeByFieldsAggregation {
 
     MeanByFieldAggregation(AggregationConfiguration configuration) {
-      super(configuration);
+      super(configuration, "MeanByField");
     }
 
     @Override

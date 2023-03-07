@@ -1,0 +1,28 @@
+aggregations:
+  - type: COUNT
+    window:
+      length: 5m
+      lateness: 1m
+      earlyFirings:
+        enabled: false
+    input:
+      format: THRIFT
+      thriftClassName: com.google.cloud.pso.beam.generator.thrift.User
+      avroSchemaLocation:
+    fields:
+      key: 
+        - uuid
+      values: []
+  - type: SUM
+    window:
+      length: 15m
+      lateness: 1m
+      earlyFirings:
+        enabled: false
+    input:
+      format: AGGREGATION_RESULT
+    fields:
+      key: 
+        - uuid
+      values: 
+        - result

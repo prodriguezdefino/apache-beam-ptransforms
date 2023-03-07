@@ -111,7 +111,7 @@ public class Utilities {
    * @return The {@link Duration} parsed from the supplied period string.
    */
   public static Duration parseDuration(String value) {
-    checkNotNull(value, "The specified duration must be a non-null value!");
+    checkNotNull(value, "The specified duration as string must be a non-null value!");
 
     var parser =
         new PeriodFormatterBuilder()

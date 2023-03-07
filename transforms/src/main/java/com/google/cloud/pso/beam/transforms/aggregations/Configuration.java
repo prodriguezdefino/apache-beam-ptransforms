@@ -15,6 +15,7 @@
  */
 package com.google.cloud.pso.beam.transforms.aggregations;
 
+import com.google.cloud.pso.beam.common.formats.TransportFormats.Format;
 import com.google.cloud.pso.beam.options.AggregationOptions;
 import java.io.Serializable;
 import java.util.List;
@@ -39,6 +40,8 @@ public class Configuration {
   }
 
   public sealed interface AggregationConfiguration permits Count, Sum, Min, Max, Mean {
+    String name();
+
     InputFormatConfiguration format();
 
     WindowConfiguration window();
@@ -48,12 +51,35 @@ public class Configuration {
     List<String> valueFields();
   }
 
-  public sealed interface InputFormatConfiguration permits ThriftFormat, AvroFormat {}
+  public sealed interface InputFormatConfiguration
+      permits ThriftFormat, AvroFormat, AggregationResultFormat {
+    Format format();
+  }
 
-  public record ThriftFormat(String className) implements InputFormatConfiguration, Serializable {}
+  public record ThriftFormat(String className) implements InputFormatConfiguration, Serializable {
+
+    @Override
+    public Format format() {
+      return Format.THRIFT;
+    }
+  }
 
   public record AvroFormat(String schemaLocation)
-      implements InputFormatConfiguration, Serializable {}
+      implements InputFormatConfiguration, Serializable {
+
+    @Override
+    public Format format() {
+      return Format.AVRO;
+    }
+  }
+
+  public record AggregationResultFormat() implements InputFormatConfiguration, Serializable {
+
+    @Override
+    public Format format() {
+      return Format.AGGREGATION_RESULT;
+    }
+  }
 
   public record WindowConfiguration(
       Duration length,
@@ -72,6 +98,11 @@ public class Configuration {
     public List<String> valueFields() {
       return List.of();
     }
+
+    @Override
+    public String name() {
+      return Aggregations.COUNT.name().toLowerCase();
+    }
   }
 
   public record Sum(
@@ -79,26 +110,50 @@ public class Configuration {
       WindowConfiguration window,
       List<String> keyFields,
       List<String> valueFields)
-      implements AggregationConfiguration, Serializable {}
+      implements AggregationConfiguration, Serializable {
+
+    @Override
+    public String name() {
+      return Aggregations.SUM.name().toLowerCase();
+    }
+  }
 
   public record Min(
       InputFormatConfiguration format,
       WindowConfiguration window,
       List<String> keyFields,
       List<String> valueFields)
-      implements AggregationConfiguration, Serializable {}
+      implements AggregationConfiguration, Serializable {
+
+    @Override
+    public String name() {
+      return Aggregations.MIN.name().toLowerCase();
+    }
+  }
 
   public record Max(
       InputFormatConfiguration format,
       WindowConfiguration window,
       List<String> keyFields,
       List<String> valueFields)
-      implements AggregationConfiguration, Serializable {}
+      implements AggregationConfiguration, Serializable {
+
+    @Override
+    public String name() {
+      return Aggregations.MAX.name().toLowerCase();
+    }
+  }
 
   public record Mean(
       InputFormatConfiguration format,
       WindowConfiguration window,
       List<String> keyFields,
       List<String> valueFields)
-      implements AggregationConfiguration, Serializable {}
+      implements AggregationConfiguration, Serializable {
+
+    @Override
+    public String name() {
+      return Aggregations.MEAN.name().toLowerCase();
+    }
+  }
 }

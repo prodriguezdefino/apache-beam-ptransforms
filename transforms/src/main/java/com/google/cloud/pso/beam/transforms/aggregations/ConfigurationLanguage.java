@@ -17,12 +17,12 @@ package com.google.cloud.pso.beam.transforms.aggregations;
 
 import static com.google.cloud.pso.beam.common.formats.TransportFormats.Format.AVRO;
 import static com.google.cloud.pso.beam.common.formats.TransportFormats.Format.THRIFT;
+import static com.google.cloud.pso.beam.transforms.aggregations.Configuration.AggregationConfigurations;
 import static com.google.cloud.pso.beam.transforms.aggregations.Configuration.Aggregations.COUNT;
 import static com.google.cloud.pso.beam.transforms.aggregations.Configuration.Aggregations.MAX;
 import static com.google.cloud.pso.beam.transforms.aggregations.Configuration.Aggregations.MEAN;
 import static com.google.cloud.pso.beam.transforms.aggregations.Configuration.Aggregations.MIN;
 import static com.google.cloud.pso.beam.transforms.aggregations.Configuration.Aggregations.SUM;
-import static com.google.cloud.pso.beam.transforms.aggregations.Configuration.AggregationConfigurations;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.util.List;
+import java.util.Optional;
 import org.apache.beam.sdk.io.FileSystems;
 import org.joda.time.Duration;
 
@@ -82,37 +83,38 @@ public class ConfigurationLanguage {
 
   record YamlAggregations(List<YamlAggregation> aggregations) {
     public AggregationConfigurations toConfigurations() {
-      return new AggregationConfigurations(aggregations.stream()
-          .map(
-              aconfig ->
-                  (Configuration.AggregationConfiguration)
-                      switch (Configuration.Aggregations.valueOf(aconfig.type())) {
-                        case COUNT -> new Configuration.Count(
-                            aconfig.input().toConfiguration(),
-                            aconfig.window().toConfiguration(),
-                            aconfig.fields().key());
-                        case MAX -> new Configuration.Max(
-                            aconfig.input().toConfiguration(),
-                            aconfig.window().toConfiguration(),
-                            aconfig.fields().key(),
-                            aconfig.fields().values());
-                        case MIN -> new Configuration.Min(
-                            aconfig.input().toConfiguration(),
-                            aconfig.window().toConfiguration(),
-                            aconfig.fields().key(),
-                            aconfig.fields().values());
-                        case MEAN -> new Configuration.Mean(
-                            aconfig.input().toConfiguration(),
-                            aconfig.window().toConfiguration(),
-                            aconfig.fields().key(),
-                            aconfig.fields().values());
-                        case SUM -> new Configuration.Sum(
-                            aconfig.input().toConfiguration(),
-                            aconfig.window().toConfiguration(),
-                            aconfig.fields().key(),
-                            aconfig.fields().values());
-                      })
-          .toList());
+      return new AggregationConfigurations(
+          aggregations.stream()
+              .map(
+                  aconfig ->
+                      (Configuration.AggregationConfiguration)
+                          switch (Configuration.Aggregations.valueOf(aconfig.type())) {
+                            case COUNT -> new Configuration.Count(
+                                aconfig.input().toConfiguration(),
+                                aconfig.window().toConfiguration(),
+                                aconfig.fields().key());
+                            case MAX -> new Configuration.Max(
+                                aconfig.input().toConfiguration(),
+                                aconfig.window().toConfiguration(),
+                                aconfig.fields().key(),
+                                aconfig.fields().values());
+                            case MIN -> new Configuration.Min(
+                                aconfig.input().toConfiguration(),
+                                aconfig.window().toConfiguration(),
+                                aconfig.fields().key(),
+                                aconfig.fields().values());
+                            case MEAN -> new Configuration.Mean(
+                                aconfig.input().toConfiguration(),
+                                aconfig.window().toConfiguration(),
+                                aconfig.fields().key(),
+                                aconfig.fields().values());
+                            case SUM -> new Configuration.Sum(
+                                aconfig.input().toConfiguration(),
+                                aconfig.window().toConfiguration(),
+                                aconfig.fields().key(),
+                                aconfig.fields().values());
+                          })
+              .toList());
     }
   }
 
@@ -121,15 +123,18 @@ public class ConfigurationLanguage {
 
   record YamlWindow(String length, String lateness, YamlEarlyFiring earlyFirings) {
     public Configuration.WindowConfiguration toConfiguration() {
+      var maybeEarly = Optional.ofNullable(earlyFirings);
+
       return new Configuration.WindowConfiguration(
           length == null ? Duration.ZERO : Utilities.parseDuration(length),
           lateness == null ? Duration.ZERO : Utilities.parseDuration(lateness),
-          earlyFirings.enabled(),
-          earlyFirings.accumulating(),
-          earlyFirings.count(),
-          earlyFirings.time() == null
-              ? Duration.ZERO
-              : Utilities.parseDuration(earlyFirings.time()));
+          maybeEarly.map(early -> early.enabled()).orElse(false),
+          maybeEarly.map(early -> early.accumulating()).orElse(false),
+          maybeEarly.map(early -> early.count()).orElse(0),
+          maybeEarly
+              .map(early -> early.time())
+              .map(time -> Utilities.parseDuration(time))
+              .orElse(Duration.ZERO));
     }
   }
 
@@ -140,6 +145,7 @@ public class ConfigurationLanguage {
       return switch (TransportFormats.Format.valueOf(format)) {
         case AVRO -> new Configuration.AvroFormat(avroSchemaLocation);
         case THRIFT -> new Configuration.ThriftFormat(thriftClassName);
+        case AGGREGATION_RESULT -> new Configuration.AggregationResultFormat();
       };
     }
   }
