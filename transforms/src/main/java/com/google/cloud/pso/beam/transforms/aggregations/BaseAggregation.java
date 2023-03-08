@@ -26,6 +26,7 @@ import com.google.common.collect.Maps;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -466,12 +467,14 @@ public abstract class BaseAggregation<Key, Value, Res>
         @SuppressWarnings("unchecked")
         var agg = (AggregationResultTransport<String, ? extends Number>) transport;
         // create the constant aggregation key and mapped values
-        var mappedValues = Map.of("result", agg.getResult());
+        var mappedValues = new HashMap<String, Number>();
+        mappedValues.put("result", agg.getResult());
         var aggregationKey = agg.getAggregationKey();
-        var decodedData = Map.of(aggregationKey, mappedValues);
+        var decodedData = new TransportFormats.AggregationResultValue(aggregationKey, mappedValues);
         var dataDecoder =
-            TransportFormats.handlerFactory(TransportFormats.Format.AGGREGATION_RESULT).apply(null);
-        @SuppressWarnings("unchecked")
+            TransportFormats.<TransportFormats.AggregationResultValue>handlerFactory(
+                    TransportFormats.Format.AGGREGATION_RESULT)
+                .apply(null);
         var encodedData = dataDecoder.encode(decodedData);
         var curriedKeyExtractor =
             Functions.curry(keyByFieldsExtractor).apply(configuration.keyFields());

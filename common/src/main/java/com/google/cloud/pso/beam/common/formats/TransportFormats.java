@@ -22,12 +22,15 @@ import static org.apache.avro.Schema.Type.FLOAT;
 import static org.apache.avro.Schema.Type.INT;
 import static org.apache.avro.Schema.Type.LONG;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.KryoException;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
@@ -54,6 +57,16 @@ import org.apache.thrift.transport.TTransportException;
 public class TransportFormats {
 
   static final Map<String, Handler> HANDLERS = Maps.newConcurrentMap();
+  static final ThreadLocal<Kryo> KRYO =
+      new ThreadLocal<Kryo>() {
+        @Override
+        protected Kryo initialValue() {
+          var kryo = new Kryo();
+          kryo.register(TransportFormats.AggregationResultValue.class);
+          kryo.register(java.util.HashMap.class);
+          return kryo;
+        }
+      };
 
   public enum Format {
     THRIFT,
@@ -61,7 +74,8 @@ public class TransportFormats {
     AGGREGATION_RESULT
   }
 
-  public static Function<String, Handler> handlerFactory(Format format) {
+  @SuppressWarnings("unchecked")
+  public static <T> Function<String, Handler<T>> handlerFactory(Format format) {
     return switch (format) {
       case THRIFT -> className ->
           HANDLERS.computeIfAbsent(className, key -> new ThriftHandler(key));
@@ -87,59 +101,66 @@ public class TransportFormats {
     String stringValue(T element, String propertyName);
   }
 
-  public record AggregationResultValueHandler()
-      implements Handler<Map<String, Map<String, Number>>>, Serializable {
+  public record AggregationResultValue(String key, Map<String, Number> mappedResults)
+      implements Serializable {}
 
-    @Override
-    public byte[] encode(Map<String, Map<String, Number>> element) {
+  public record AggregationResultValueHandler()
+      implements Handler<AggregationResultValue>, Serializable {
+
+    byte[] writeKryo(TransportFormats.AggregationResultValue element) {
       try {
         var baos = new ByteArrayOutputStream();
-        try (var objectOutputStream = new ObjectOutputStream(baos)) {
-          objectOutputStream.writeObject(element);
-          objectOutputStream.flush();
-        }
+        var output = new Output(baos);
+        KRYO.get().writeObject(output, element);
+        output.close();
         return baos.toByteArray();
-      } catch (IOException ex) {
+      } catch (KryoException ex) {
         throw new IllegalArgumentException(
             "The serialization of the provided element was not possible.", ex);
       }
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public Map<String, Map<String, Number>> decode(byte[] encodedElement) {
-      try (var ois = new ObjectInputStream(new ByteArrayInputStream(encodedElement)); ) {
-        return (Map<String, Map<String, Number>>) ois.readObject();
-      } catch (IOException | ClassNotFoundException ex) {
+    TransportFormats.AggregationResultValue readKryo(byte[] bytes) {
+      try {
+        var bais = new ByteArrayInputStream(bytes);
+        return KRYO.get()
+            .readObject(new Input(bais), TransportFormats.AggregationResultValue.class);
+      } catch (Exception ex) {
         throw new IllegalArgumentException(
             "The provided byte array did not conform the expected structure.", ex);
       }
     }
 
-    String validateAndRetrieveKey(Map<String, Map<String, Number>> map) {
-      // outer map should only contain 1 entry as aggregation field as key
-      return map.keySet().stream()
-          .findFirst()
-          .orElseThrow(
-              () ->
-                  new IllegalArgumentException(
-                      "The provided element ("
-                          + map
-                          + ") does not have the expected structure. "
-                          + "This value handler assumes the encoded value as an aggregation "
-                          + "result structure map<aggregation-key-field, <result, value>>."));
+    @Override
+    public byte[] encode(AggregationResultValue element) {
+      return writeKryo(element);
     }
 
     @Override
-    public Long longValue(Map<String, Map<String, Number>> element, String propertyName) {
-      var storedKey = validateAndRetrieveKey(element);
-      return element.get(storedKey).get(propertyName).longValue();
+    public AggregationResultValue decode(byte[] encodedElement) {
+      return readKryo(encodedElement);
+    }
+
+    void validateKey(String key) {
+      Preconditions.checkNotNull(
+          key,
+          "The provided element ("
+              + key
+              + ") does not have the expected structure. "
+              + "This value handler assumes the encoded value as an aggregation "
+              + "result structure.");
     }
 
     @Override
-    public Double doubleValue(Map<String, Map<String, Number>> element, String propertyName) {
-      var storedKey = validateAndRetrieveKey(element);
-      return element.get(storedKey).get(propertyName).doubleValue();
+    public Long longValue(AggregationResultValue element, String propertyName) {
+      validateKey(element.key());
+      return element.mappedResults().get(propertyName).longValue();
+    }
+
+    @Override
+    public Double doubleValue(AggregationResultValue element, String propertyName) {
+      validateKey(element.key());
+      return element.mappedResults().get(propertyName).doubleValue();
     }
 
     /**
@@ -149,13 +170,14 @@ public class TransportFormats {
      *
      * @param element the decoded map for the aggregation result.
      * @param propertyName the key property name
-     * @return the aggregation key value.
+     * @return the aggregation key field-value component.
      */
     @Override
-    public String stringValue(Map<String, Map<String, Number>> element, String propertyName) {
-      // outer map should only contain 1 entry as aggregation field as key
-      var storedKey = element.keySet().stream().findFirst();
+    public String stringValue(AggregationResultValue element, String propertyName) {
+      // outer map should only contain a non-null value as the key
+      var storedKey = Optional.ofNullable(element.key());
       return storedKey
+          // the property name provided should appear as a component part of the key
           .filter(k -> k.contains(propertyName))
           // remove the property from the aggregation key and then discard previously computed
           // aggregation key components from key

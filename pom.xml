@@ -62,6 +62,11 @@
         <version>1.11.1</version>
       </dependency>
       <dependency>
+        <groupId>com.esotericsoftware</groupId>
+        <artifactId>kryo</artifactId>
+        <version>5.4.0</version>
+      </dependency>    
+      <dependency>
         <groupId>org.apache.avro</groupId>
         <artifactId>avro-thrift</artifactId>
         <version>1.11.1</version>
