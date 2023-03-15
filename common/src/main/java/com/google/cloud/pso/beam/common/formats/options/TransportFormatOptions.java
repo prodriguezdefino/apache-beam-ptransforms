@@ -46,7 +46,7 @@ public interface TransportFormatOptions extends PipelineOptions {
 
   void setTransportFormat(TransportFormats.Format value);
 
-  static class TransportFormatFactory implements DefaultValueFactory<TransportFormats.Format> {
+  class TransportFormatFactory implements DefaultValueFactory<TransportFormats.Format> {
 
     @Override
     public TransportFormats.Format create(PipelineOptions options) {

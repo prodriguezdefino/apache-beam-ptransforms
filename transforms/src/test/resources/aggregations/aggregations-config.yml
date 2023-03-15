@@ -1,5 +1,5 @@
 aggregations:
-  - type: MIN
+  - type: COUNT
     window:
       length: 15m
       lateness: 1m
@@ -11,9 +11,23 @@ aggregations:
     input:
       format: THRIFT
       thriftClassName: com.google.cloud.pso.beam.generator.thrift.User
-      avroSchemaLocation:
+      schemaLocation:
+    fields:
+      key: 
+        - uuid
+      values: []
+  - type: SUM
+    window:
+      length: 1hr
+      lateness: 5m
+      earlyFirings:
+        enabled: false
+    input:
+      format: AVRO
+      thriftClassName: 
+      schemaLocation: gs://somelocation/schema.avro
     fields:
       key: 
         - uuid
       values: 
-        - startup
+        - result

@@ -1,0 +1,46 @@
+{
+  "type" : "record",
+  "name" : "message",
+  "namespace" : "definitions.message",
+  "fields" : [ {
+    "name" : "topic",
+    "type" : [ "null", {
+      "type" : "record",
+      "name" : "topic",
+      "namespace" : "definitions.topic",
+      "fields" : [ {
+        "name" : "name",
+        "type" : [ "null", "string" ]
+      }, {
+        "name" : "id",
+        "type" : [ "null", "string" ]
+      }, {
+        "name" : "value",
+        "type" : "long"
+      } ]
+    } ]
+  }, {
+    "name" : "message",
+    "type" : [ "null", "string" ]
+  }, {
+    "name" : "user",
+    "type" : [ "null", {
+      "type" : "record",
+      "name" : "user",
+      "namespace" : "definitions.user",
+      "fields" : [ {
+        "name" : "startup",
+        "type" : "long"
+      }, {
+        "name" : "description",
+        "type" : [ "null", "string" ]
+      }, {
+        "name" : "location",
+        "type" : [ "null", "string" ]
+      }, {
+        "name" : "uuid",
+        "type" : [ "null", "string" ]
+      } ]
+    } ]
+  } ]
+}

@@ -154,7 +154,9 @@ public class AggregationsTest {
 
   @Test
   public void testCountAggregation() {
-    String[] args = {"--aggregationConfigurationLocation=classpath://count-config.yml"};
+    String[] args = {
+      "--aggregationConfigurationLocation=classpath://aggregations/count-config.yml"
+    };
     var options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
     var configuration = Configuration.AggregationConfigurations.fromOptions(options);
@@ -180,7 +182,7 @@ public class AggregationsTest {
 
   @Test
   public void testSumAggregation() {
-    String[] args = {"--aggregationConfigurationLocation=classpath://sum-config.yml"};
+    String[] args = {"--aggregationConfigurationLocation=classpath://aggregations/sum-config.yml"};
     var options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
     var configuration = Configuration.AggregationConfigurations.fromOptions(options);
@@ -205,7 +207,7 @@ public class AggregationsTest {
 
   @Test
   public void testMinAggregation() {
-    String[] args = {"--aggregationConfigurationLocation=classpath://min-config.yml"};
+    String[] args = {"--aggregationConfigurationLocation=classpath://aggregations/min-config.yml"};
     var options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
     var configuration = Configuration.AggregationConfigurations.fromOptions(options);
@@ -231,7 +233,7 @@ public class AggregationsTest {
 
   @Test
   public void testMaxAggregation() {
-    String[] args = {"--aggregationConfigurationLocation=classpath://max-config.yml"};
+    String[] args = {"--aggregationConfigurationLocation=classpath://aggregations/max-config.yml"};
     var options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
     var configuration = Configuration.AggregationConfigurations.fromOptions(options);
@@ -257,7 +259,7 @@ public class AggregationsTest {
 
   @Test
   public void testMeanAggregation() {
-    String[] args = {"--aggregationConfigurationLocation=classpath://mean-config.yml"};
+    String[] args = {"--aggregationConfigurationLocation=classpath://aggregations/mean-config.yml"};
     var options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
     var configuration = Configuration.AggregationConfigurations.fromOptions(options);
@@ -283,7 +285,7 @@ public class AggregationsTest {
 
   @Test
   public void testSimpleConfigurableAggregation() {
-    String[] args = {"--aggregationConfigurationLocation=classpath://mean-config.yml"};
+    String[] args = {"--aggregationConfigurationLocation=classpath://aggregations/mean-config.yml"};
     var options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
     var testPipeline = TestPipeline.create(options);
@@ -309,7 +311,9 @@ public class AggregationsTest {
     // this configuration computes a count per key on 5min windows and then sums those keys on 15min
     // windows, so we expect sums of results => key components are original key + value + "sum" +
     // "result"
-    String[] args = {"--aggregationConfigurationLocation=classpath://multiple-config.yml"};
+    String[] args = {
+      "--aggregationConfigurationLocation=classpath://aggregations/multiple-config.yml"
+    };
     var options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(AggregationOptions.class);
     var testPipeline = TestPipeline.create(options);

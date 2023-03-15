@@ -87,7 +87,7 @@ public interface KafkaOptions extends PipelineOptions {
 
   void setTimestampType(TimestampType var1);
 
-  static class KafkaConfigFactory implements DefaultValueFactory<KafkaConfig> {
+  class KafkaConfigFactory implements DefaultValueFactory<KafkaConfig> {
 
     @Override
     public KafkaConfig create(PipelineOptions options) {

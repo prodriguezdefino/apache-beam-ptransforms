@@ -1,0 +1,129 @@
+{
+  "definitions": {
+    "message": {
+      "type": "object",
+      "required": [
+        "user",
+        "topic",
+        "message"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "user": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/user"
+            }
+          ]
+        },
+        "topic": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/topic"
+            }
+          ]
+        },
+        "message": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    "user": {
+      "type": "object",
+      "required": [
+        "location",
+        "startup",
+        "description",
+        "uuid"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "location": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "startup": {
+          "type": "integer",
+          "minimum": -9223372036854776000,
+          "maximum": 9223372036854776000
+        },
+        "description": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "uuid": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    "topic": {
+      "type": "object",
+      "required": [
+        "id",
+        "value",
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "value": {
+          "type": "integer",
+          "minimum": -9223372036854776000,
+          "maximum": 9223372036854776000
+        },
+        "name": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "$ref": "#/definitions/message"
+}

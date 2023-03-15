@@ -11,7 +11,7 @@ aggregations:
     input:
       format: THRIFT
       thriftClassName: com.google.cloud.pso.beam.generator.thrift.User
-      avroSchemaLocation:
+      schemaLocation:
     fields:
       key: 
         - uuid

@@ -43,8 +43,7 @@ public class AvroUtils {
     try {
       if (avroSchemaLocation.startsWith("classpath://")) {
         iStream =
-            TransportFormats.AvroGenericRecordHandler.class.getResourceAsStream(
-                avroSchemaLocation.replace("classpath://", "/"));
+            AvroUtils.class.getResourceAsStream(avroSchemaLocation.replace("classpath://", "/"));
       } else {
         iStream =
             Channels.newInputStream(

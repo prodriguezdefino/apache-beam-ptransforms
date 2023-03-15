@@ -16,6 +16,7 @@
 package com.google.cloud.pso.beam.transforms.aggregations;
 
 import com.google.cloud.pso.beam.common.Functions;
+import com.google.cloud.pso.beam.common.formats.AggregationResultValue;
 import com.google.cloud.pso.beam.common.formats.TransportFormats;
 import com.google.cloud.pso.beam.common.transport.AggregationResultTransport;
 import com.google.cloud.pso.beam.common.transport.AggregationTransport;
@@ -92,6 +93,8 @@ public abstract class BaseAggregation<Key, Value, Res>
               case AGGREGATION_RESULT -> TransportFormats.handlerFactory(
                       TransportFormats.Format.AGGREGATION_RESULT)
                   .apply(null);
+              case JSON -> TransportFormats.handlerFactory(TransportFormats.Format.JSON)
+                  .apply(((JSONFormat) configuration).schemaLocation());
             };
           };
 
@@ -470,9 +473,9 @@ public abstract class BaseAggregation<Key, Value, Res>
         var mappedValues = new HashMap<String, Number>();
         mappedValues.put("result", agg.getResult());
         var aggregationKey = agg.getAggregationKey();
-        var decodedData = new TransportFormats.AggregationResultValue(aggregationKey, mappedValues);
+        var decodedData = new AggregationResultValue(aggregationKey, mappedValues);
         var dataDecoder =
-            TransportFormats.<TransportFormats.AggregationResultValue>handlerFactory(
+            TransportFormats.<AggregationResultValue>handlerFactory(
                     TransportFormats.Format.AGGREGATION_RESULT)
                 .apply(null);
         var encodedData = dataDecoder.encode(decodedData);

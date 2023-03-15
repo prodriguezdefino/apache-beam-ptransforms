@@ -41,7 +41,11 @@
     <dependency>
       <groupId>com.esotericsoftware</groupId>
       <artifactId>kryo</artifactId>
-    </dependency>    
+    </dependency>   
+    <dependency>
+      <groupId>com.github.erosb</groupId>
+      <artifactId>everit-json-schema</artifactId>
+    </dependency>
   </dependencies>
   
   <build>

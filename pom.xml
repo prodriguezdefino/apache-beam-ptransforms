@@ -16,14 +16,14 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <java.version>17</java.version>
-    <beam.version>2.45.0</beam.version>
+    <beam.version>2.46.0</beam.version>
     <!-- tool versions -->
     <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
     <maven-exec-plugin.version>1.6.0</maven-exec-plugin.version>
     <maven-jar-plugin.version>3.0.2</maven-jar-plugin.version>
     <maven-shade-plugin.version>3.1.0</maven-shade-plugin.version>
     <maven-surefire-plugin.version>2.21.0</maven-surefire-plugin.version>
-    <spotless.version>2.33.0</spotless.version>
+    <spotless.version>2.35.0</spotless.version>
   </properties>
 
   <dependencyManagement>
@@ -66,6 +66,29 @@
         <artifactId>kryo</artifactId>
         <version>5.4.0</version>
       </dependency>    
+      <dependency>
+        <groupId>com.github.erosb</groupId>
+        <artifactId>everit-json-schema</artifactId>
+        <version>1.14.1</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>commons-validator</groupId>
+            <artifactId>commons-validator</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
       <dependency>
         <groupId>org.apache.avro</groupId>
         <artifactId>avro-thrift</artifactId>
@@ -111,24 +134,7 @@
     </dependencies>
   </dependencyManagement>
   
-  <build>
-    <resources>
-      <resource>
-        <filtering>false</filtering>
-        <directory>src/test/resources</directory>
-        <includes>
-          <include>**/*.properties</include>
-        </includes>
-      </resource>
-      <resource>
-        <filtering>false</filtering>
-        <directory>src/main/resources</directory>
-        <includes>
-          <include>**/*.properties</include>
-        </includes>
-      </resource>
-    </resources>
-    
+  <build>    
     <pluginManagement>
       <plugins>
         <plugin>

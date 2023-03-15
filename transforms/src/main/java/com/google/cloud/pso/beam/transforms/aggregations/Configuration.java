@@ -52,7 +52,7 @@ public class Configuration {
   }
 
   public sealed interface InputFormatConfiguration
-      permits ThriftFormat, AvroFormat, AggregationResultFormat {
+      permits ThriftFormat, AvroFormat, AggregationResultFormat, JSONFormat {
     Format format();
   }
 
@@ -61,6 +61,15 @@ public class Configuration {
     @Override
     public Format format() {
       return Format.THRIFT;
+    }
+  }
+
+  public record JSONFormat(String schemaLocation)
+      implements InputFormatConfiguration, Serializable {
+
+    @Override
+    public Format format() {
+      return Format.JSON;
     }
   }
 

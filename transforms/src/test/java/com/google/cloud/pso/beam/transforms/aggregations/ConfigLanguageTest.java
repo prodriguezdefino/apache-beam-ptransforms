@@ -33,7 +33,9 @@ public class ConfigLanguageTest {
     var mapper = new ObjectMapper(new YAMLFactory());
     var yamlConfig =
         mapper.readValue(
-            this.getClass().getClassLoader().getResourceAsStream("aggregations-config.yml"),
+            this.getClass()
+                .getClassLoader()
+                .getResourceAsStream("aggregations/aggregations-config.yml"),
             ConfigurationLanguage.YamlAggregations.class);
     assertNotNull(yamlConfig);
     assertEquals(2, yamlConfig.aggregations().size());
@@ -47,7 +49,8 @@ public class ConfigLanguageTest {
 
   @Test
   public void testConfigurationParser() throws IOException {
-    var aggregations = ConfigurationLanguage.parseFromYaml("classpath://aggregations-config.yml");
+    var aggregations =
+        ConfigurationLanguage.parseFromYaml("classpath://aggregations/aggregations-config.yml");
     validateConfig(aggregations);
   }
 

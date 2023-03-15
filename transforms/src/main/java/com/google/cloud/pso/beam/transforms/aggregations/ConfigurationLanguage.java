@@ -140,12 +140,13 @@ public class ConfigurationLanguage {
 
   record YamlEarlyFiring(Boolean enabled, Boolean accumulating, Integer count, String time) {}
 
-  record YamlInputFormat(String format, String thriftClassName, String avroSchemaLocation) {
+  record YamlInputFormat(String format, String thriftClassName, String schemaLocation) {
     public Configuration.InputFormatConfiguration toConfiguration() {
       return switch (TransportFormats.Format.valueOf(format)) {
-        case AVRO -> new Configuration.AvroFormat(avroSchemaLocation);
+        case AVRO -> new Configuration.AvroFormat(schemaLocation);
         case THRIFT -> new Configuration.ThriftFormat(thriftClassName);
         case AGGREGATION_RESULT -> new Configuration.AggregationResultFormat();
+        case JSON -> new Configuration.JSONFormat(schemaLocation);
       };
     }
   }

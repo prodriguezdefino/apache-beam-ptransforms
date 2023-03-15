@@ -58,7 +58,7 @@ public interface KafkaSASLSSLOptions extends KafkaOptions {
 
   void setSASLSSLConfig(SASLSSLConfig var1);
 
-  static class KafkaConfigFactory implements DefaultValueFactory<SASLSSLConfig> {
+  class KafkaConfigFactory implements DefaultValueFactory<SASLSSLConfig> {
 
     @Override
     public SASLSSLConfig create(PipelineOptions options) {
