@@ -126,7 +126,7 @@ public class JsonUtils {
               enumSchema.getPossibleValues().stream().map(Object::toString).toArray(String[]::new));
     } else if (jsonSchema instanceof NumberSchema numSchema) {
       if (numSchema.requiresInteger()) {
-        if (compareAgainstMaxInt(numSchema.getMaximum()) < 0) {
+        if (shouldSchemaUseLongInsteadOfInteger(numSchema)) {
           return avroSchemaBuilder.longType();
         } else return avroSchemaBuilder.intType();
       } else return avroSchemaBuilder.doubleType();
@@ -136,6 +136,12 @@ public class JsonUtils {
       return avroSchemaBuilder.stringType();
     } else
       throw new IllegalArgumentException("JSON schema not supported: " + jsonSchema.toString());
+  }
+
+  public static boolean shouldSchemaUseLongInsteadOfInteger(NumberSchema numSchema) {
+    if (compareAgainstMaxInt(numSchema.getMaximum()) < 0) {
+      return true;
+    } else return false;
   }
 
   static Integer compareAgainstMaxInt(Number maxValue) {
