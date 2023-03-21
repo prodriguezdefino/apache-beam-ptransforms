@@ -20,7 +20,6 @@ import static org.junit.Assert.*;
 import com.google.cloud.pso.beam.common.formats.AvroUtils;
 import com.google.cloud.pso.beam.common.formats.InputFormatConfiguration;
 import com.google.cloud.pso.beam.common.formats.ThriftUtils;
-import com.google.cloud.pso.beam.common.formats.TransportFormats;
 import com.google.cloud.pso.beam.common.formats.transforms.TransformTransportToFormat;
 import com.google.cloud.pso.beam.common.transport.CommonTransport;
 import com.google.cloud.pso.beam.generator.thrift.Message;

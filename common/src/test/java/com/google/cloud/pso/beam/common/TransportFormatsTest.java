@@ -144,7 +144,7 @@ public class TransportFormatsTest {
   public void testJsonEncodeDecode() {
     var handlerFactory = TransportFormats.handlerFactory(TransportFormats.Format.JSON);
     var handler = handlerFactory.<JSONObject>apply("classpath://json/message-schema.json");
-    var json = new JSONObject(VALID_JSON_STRING); 
+    var json = new JSONObject(VALID_JSON_STRING);
     var bytes = handler.encode(json);
     var decoded = handler.decode(bytes);
     Assert.assertEquals(json.toString(), decoded.toString());
