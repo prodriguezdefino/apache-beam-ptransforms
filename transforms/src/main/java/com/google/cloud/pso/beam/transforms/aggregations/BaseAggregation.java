@@ -17,6 +17,8 @@ package com.google.cloud.pso.beam.transforms.aggregations;
 
 import com.google.cloud.pso.beam.common.Functions;
 import com.google.cloud.pso.beam.common.formats.AggregationResultValue;
+import com.google.cloud.pso.beam.common.formats.InputFormatConfiguration.*;
+import com.google.cloud.pso.beam.common.formats.InputFormatConfiguration.FormatConfiguration;
 import com.google.cloud.pso.beam.common.formats.TransportFormats;
 import com.google.cloud.pso.beam.common.transport.AggregationResultTransport;
 import com.google.cloud.pso.beam.common.transport.AggregationTransport;
@@ -82,7 +84,7 @@ public abstract class BaseAggregation<Key, Value, Res>
    * A function that can create the specific handler to use on a transport object given the
    * transport format configuration.
    */
-  protected static final SerializableFunction<InputFormatConfiguration, TransportFormats.Handler>
+  protected static final SerializableFunction<FormatConfiguration, TransportFormats.Handler>
       FORMAT_HANDLER_FUNC =
           configuration -> {
             return switch (configuration.format()) {
@@ -99,7 +101,7 @@ public abstract class BaseAggregation<Key, Value, Res>
           };
 
   /** A function that decodes a raw bytes array given the expected transport configuration. */
-  static final SerializableBiFunction<InputFormatConfiguration, byte[], Object> EVENT_DECODER =
+  static final SerializableBiFunction<FormatConfiguration, byte[], Object> EVENT_DECODER =
       (configuration, data) -> {
         return FORMAT_HANDLER_FUNC.apply(configuration).decode(data);
       };

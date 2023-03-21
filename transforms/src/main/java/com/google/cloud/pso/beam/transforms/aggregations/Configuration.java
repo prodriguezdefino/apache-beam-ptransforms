@@ -15,7 +15,7 @@
  */
 package com.google.cloud.pso.beam.transforms.aggregations;
 
-import com.google.cloud.pso.beam.common.formats.TransportFormats.Format;
+import com.google.cloud.pso.beam.common.formats.InputFormatConfiguration.FormatConfiguration;
 import com.google.cloud.pso.beam.options.AggregationOptions;
 import java.io.Serializable;
 import java.util.List;
@@ -42,52 +42,13 @@ public class Configuration {
   public sealed interface AggregationConfiguration permits Count, Sum, Min, Max, Mean {
     String name();
 
-    InputFormatConfiguration format();
+    FormatConfiguration format();
 
     WindowConfiguration window();
 
     List<String> keyFields();
 
     List<String> valueFields();
-  }
-
-  public sealed interface InputFormatConfiguration
-      permits ThriftFormat, AvroFormat, AggregationResultFormat, JSONFormat {
-    Format format();
-  }
-
-  public record ThriftFormat(String className) implements InputFormatConfiguration, Serializable {
-
-    @Override
-    public Format format() {
-      return Format.THRIFT;
-    }
-  }
-
-  public record JSONFormat(String schemaLocation)
-      implements InputFormatConfiguration, Serializable {
-
-    @Override
-    public Format format() {
-      return Format.JSON;
-    }
-  }
-
-  public record AvroFormat(String schemaLocation)
-      implements InputFormatConfiguration, Serializable {
-
-    @Override
-    public Format format() {
-      return Format.AVRO;
-    }
-  }
-
-  public record AggregationResultFormat() implements InputFormatConfiguration, Serializable {
-
-    @Override
-    public Format format() {
-      return Format.AGGREGATION_RESULT;
-    }
   }
 
   public record WindowConfiguration(
@@ -100,7 +61,7 @@ public class Configuration {
       implements Serializable {}
 
   public record Count(
-      InputFormatConfiguration format, WindowConfiguration window, List<String> keyFields)
+      FormatConfiguration format, WindowConfiguration window, List<String> keyFields)
       implements AggregationConfiguration, Serializable {
 
     @Override
@@ -115,7 +76,7 @@ public class Configuration {
   }
 
   public record Sum(
-      InputFormatConfiguration format,
+      FormatConfiguration format,
       WindowConfiguration window,
       List<String> keyFields,
       List<String> valueFields)
@@ -128,7 +89,7 @@ public class Configuration {
   }
 
   public record Min(
-      InputFormatConfiguration format,
+      FormatConfiguration format,
       WindowConfiguration window,
       List<String> keyFields,
       List<String> valueFields)
@@ -141,7 +102,7 @@ public class Configuration {
   }
 
   public record Max(
-      InputFormatConfiguration format,
+      FormatConfiguration format,
       WindowConfiguration window,
       List<String> keyFields,
       List<String> valueFields)
@@ -154,7 +115,7 @@ public class Configuration {
   }
 
   public record Mean(
-      InputFormatConfiguration format,
+      FormatConfiguration format,
       WindowConfiguration window,
       List<String> keyFields,
       List<String> valueFields)

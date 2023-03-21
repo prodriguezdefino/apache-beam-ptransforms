@@ -18,6 +18,7 @@ package com.google.cloud.pso.beam.common;
 import static org.junit.Assert.*;
 
 import com.google.cloud.pso.beam.common.formats.AvroUtils;
+import com.google.cloud.pso.beam.common.formats.InputFormatConfiguration;
 import com.google.cloud.pso.beam.common.formats.ThriftUtils;
 import com.google.cloud.pso.beam.common.formats.TransportFormats;
 import com.google.cloud.pso.beam.common.formats.transforms.TransformTransportToFormat;
@@ -68,7 +69,6 @@ public class TransformTransportToFormatTest {
     var className = "com.google.cloud.pso.beam.generator.thrift.Message";
     var avroSchema = AvroUtils.retrieveAvroSchemaFromThriftClassName(className);
     var beamSchema = TransformTransportToFormat.retrieveRowSchema(className);
-    var thriftClass = ThriftUtils.retrieveThriftClass(className);
     var random = new Random();
 
     var message = new Message();
@@ -92,9 +92,11 @@ public class TransformTransportToFormatTest {
     var thriftData = getBytesFromThriftObject(message);
     var transport = new CommonTransport("someid", new HashMap<>(), thriftData);
 
+    var config = new InputFormatConfiguration.ThriftFormat(className);
+
     var row =
         TransformTransportToFormat.retrieveRowFromTransport(
-            transport, TransportFormats.Format.THRIFT, thriftClass, beamSchema, avroSchema);
+            transport, config, beamSchema, avroSchema);
 
     assertNotNull(row);
   }

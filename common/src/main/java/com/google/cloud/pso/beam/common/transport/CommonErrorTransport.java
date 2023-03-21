@@ -85,4 +85,9 @@ public record CommonErrorTransport(
       String errorMessage) {
     return new CommonErrorTransport(id, data, headers, serializedCause, errorMessage);
   }
+
+  public static CommonErrorTransport of(Transport transport, String message, Throwable cause) {
+    return new CommonErrorTransport(
+        transport.getId(), transport.getHeaders(), new byte[0], cause, message);
+  }
 }

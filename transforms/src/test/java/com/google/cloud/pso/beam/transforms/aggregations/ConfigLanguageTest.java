@@ -19,8 +19,8 @@ import static org.junit.Assert.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.google.cloud.pso.beam.common.formats.InputFormatConfiguration;
 import com.google.cloud.pso.beam.transforms.aggregations.Configuration.AggregationConfigurations;
-import com.google.cloud.pso.beam.transforms.aggregations.Configuration.AvroFormat;
 import com.google.cloud.pso.beam.transforms.aggregations.Configuration.Count;
 import com.google.cloud.pso.beam.transforms.aggregations.Configuration.Sum;
 import java.io.IOException;
@@ -59,13 +59,13 @@ public class ConfigLanguageTest {
     assertEquals(2, aggregations.configurations().size());
     assertTrue(
         aggregations.configurations().get(0) instanceof Count count
-            && count.format() instanceof Configuration.ThriftFormat
+            && count.format() instanceof InputFormatConfiguration.ThriftFormat
             && count.window().shouldAccumulatePanes()
             && count.window().withEarlyFirings()
             && count.valueFields().isEmpty());
     assertTrue(
         aggregations.configurations().get(1) instanceof Sum sum
-            && sum.format() instanceof AvroFormat
+            && sum.format() instanceof InputFormatConfiguration.AvroFormat
             && !sum.window().withEarlyFirings()
             && !sum.valueFields().isEmpty());
   }

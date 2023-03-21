@@ -15,8 +15,12 @@
  */
 package com.google.cloud.pso.beam.common.formats;
 
+import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.pso.beam.common.transport.Transport;
+import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.everit.json.schema.Schema;
 import org.json.JSONObject;
 
@@ -41,6 +45,17 @@ public record JsonTransportHandler(JsonSchema schema)
       var json = new JSONObject(new String(encodedElement));
       schema.schema().validate(json);
       return json;
+    } catch (Exception ex) {
+      throw new RuntimeException("Problems while trying to decode element.", ex);
+    }
+  }
+
+  public TableRow decodeTableRow(byte[] encodedElement) {
+    try {
+      var bais = new ByteArrayInputStream(encodedElement);
+      @SuppressWarnings("deprecation")
+      var tableRow = TableRowJsonCoder.of().decode(bais, Coder.Context.OUTER);
+      return tableRow;
     } catch (Exception ex) {
       throw new RuntimeException("Problems while trying to decode element.", ex);
     }

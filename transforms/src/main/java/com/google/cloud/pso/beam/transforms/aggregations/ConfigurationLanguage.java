@@ -27,6 +27,8 @@ import static com.google.cloud.pso.beam.transforms.aggregations.Configuration.Ag
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.cloud.pso.beam.common.Utilities;
+import com.google.cloud.pso.beam.common.formats.InputFormatConfiguration;
+import com.google.cloud.pso.beam.common.formats.InputFormatConfiguration.FormatConfiguration;
 import com.google.cloud.pso.beam.common.formats.TransportFormats;
 import java.io.IOException;
 import java.io.InputStream;
@@ -141,12 +143,12 @@ public class ConfigurationLanguage {
   record YamlEarlyFiring(Boolean enabled, Boolean accumulating, Integer count, String time) {}
 
   record YamlInputFormat(String format, String thriftClassName, String schemaLocation) {
-    public Configuration.InputFormatConfiguration toConfiguration() {
+    public FormatConfiguration toConfiguration() {
       return switch (TransportFormats.Format.valueOf(format)) {
-        case AVRO -> new Configuration.AvroFormat(schemaLocation);
-        case THRIFT -> new Configuration.ThriftFormat(thriftClassName);
-        case AGGREGATION_RESULT -> new Configuration.AggregationResultFormat();
-        case JSON -> new Configuration.JSONFormat(schemaLocation);
+        case AVRO -> new InputFormatConfiguration.AvroFormat(schemaLocation);
+        case THRIFT -> new InputFormatConfiguration.ThriftFormat(thriftClassName);
+        case AGGREGATION_RESULT -> new InputFormatConfiguration.AggregationResultFormat();
+        case JSON -> new InputFormatConfiguration.JSONFormat(schemaLocation);
       };
     }
   }

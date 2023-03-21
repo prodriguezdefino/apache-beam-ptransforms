@@ -17,46 +17,29 @@ package com.google.cloud.pso.beam.common.formats.options;
 
 import com.google.cloud.pso.beam.common.formats.TransportFormats;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.DefaultValueFactory;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 /** A collection of options needed to define the configuration for transport formats. */
 public interface TransportFormatOptions extends PipelineOptions {
 
-  @Description("FQCN of the type the pipeline will ingest, sets EventFormat as THRIFT.")
+  @Description("The format this pipeline will receive as encoded bytes.")
+  @Default.Enum("THRIFT")
+  TransportFormats.Format getTransportFormat();
+
+  void setTransportFormat(TransportFormats.Format value);
+
+  @Description("FQCN of the Thrift type the pipeline will ingest. Used when format is THRIFT.")
   @Default.String("com.google.cloud.pso.beam.generator.thrift.CompoundEvent")
   String getThriftClassName();
 
   void setThriftClassName(String value);
 
   @Description(
-      "The Avro schema file used to deserialize the payload from the event, "
-          + "sets EventFormat as AVRO. Takes precedence over other settings in this options.")
+      "The location of the schema file used to understand and deserialize the payload "
+          + "from the transport. Used when format is JSON or AVRO.")
   @Default.String("")
-  String getAvroSchemaLocation();
+  String getSchemaFileLocation();
 
-  void setAvroSchemaLocation(String value);
-
-  @Description(
-      "The identified EventFormat for the pipeline's data. Tipically "
-          + "this would be automatically configured based on the other options set at launch.")
-  @Default.InstanceFactory(TransportFormatFactory.class)
-  TransportFormats.Format getTransportFormat();
-
-  void setTransportFormat(TransportFormats.Format value);
-
-  class TransportFormatFactory implements DefaultValueFactory<TransportFormats.Format> {
-
-    @Override
-    public TransportFormats.Format create(PipelineOptions options) {
-      var eventOptions = options.as(TransportFormatOptions.class);
-      if (eventOptions.getAvroSchemaLocation().isBlank()
-          || eventOptions.getAvroSchemaLocation().isEmpty()) {
-        return TransportFormats.Format.THRIFT;
-      } else {
-        return TransportFormats.Format.AVRO;
-      }
-    }
-  }
+  void setSchemaFileLocation(String value);
 }
