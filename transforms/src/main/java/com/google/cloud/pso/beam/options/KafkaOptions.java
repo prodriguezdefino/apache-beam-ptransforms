@@ -71,7 +71,7 @@ public interface KafkaOptions extends PipelineOptions {
   void setPartitionMaxFetchSize(Integer value);
 
   @Description("Sets the configuration for each record's timestamp.")
-  @Default.Enum("LOG_APPEND_TIME")
+  @Default.Enum("CREATE_TIME")
   TimestampType getTimestampType();
 
   void setTimestampType(TimestampType value);
