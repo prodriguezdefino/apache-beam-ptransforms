@@ -16,7 +16,6 @@
 package com.google.cloud.pso.beam.transforms.kafka;
 
 import com.google.cloud.pso.beam.options.KafkaOptions;
-import com.google.cloud.pso.beam.options.KafkaSASLSSLOptions;
 import java.util.Map;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -30,8 +29,8 @@ public class ConsumerFactoryFn
   public ConsumerFactoryFn(KafkaOptions options) {
     this.kafkaConfig =
         options.isKafkaSASLSSLEnabled() == false
-            ? options.getKafkaConfig()
-            : ((KafkaSASLSSLOptions) options.as(KafkaSASLSSLOptions.class)).getSASLSSLConfig();
+            ? KafkaConfig.fromOptions(options)
+            : SASLSSLConfig.fromOptions(options);
   }
 
   @Override

@@ -17,7 +17,9 @@ package com.google.cloud.pso.beam.transforms.kafka;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.google.cloud.pso.beam.options.KafkaOptions;
 import java.io.Serializable;
+import org.apache.beam.sdk.options.PipelineOptions;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes(value = {@JsonSubTypes.Type(value = SASLSSLConfig.class, name = "saslsslconfig")})
@@ -79,5 +81,17 @@ public class KafkaConfig implements Serializable {
 
   public String getKeysRootFolder() {
     return this.keysRootFolder;
+  }
+
+  public static KafkaConfig fromOptions(PipelineOptions options) {
+    var opts = options.as(KafkaOptions.class);
+    return new KafkaConfig(
+        opts.getConsumerGroupId().get(),
+        opts.getPartitionMaxFetchSize(),
+        opts.isKafkaAutocommitEnabled(),
+        opts.getDefaultApiTimeoutMs(),
+        opts.isKafkaSASLSSLEnabled(),
+        opts.getBootstrapServers().get(),
+        opts.getKeysRootFolder());
   }
 }

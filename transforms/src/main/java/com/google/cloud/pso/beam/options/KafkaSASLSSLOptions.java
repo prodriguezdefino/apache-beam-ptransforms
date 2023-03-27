@@ -15,11 +15,8 @@
  */
 package com.google.cloud.pso.beam.options;
 
-import com.google.cloud.pso.beam.transforms.kafka.SASLSSLConfig;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.DefaultValueFactory;
 import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 
 public interface KafkaSASLSSLOptions extends KafkaOptions {
@@ -54,34 +51,4 @@ public interface KafkaSASLSSLOptions extends KafkaOptions {
   ValueProvider<String> getSecretManagerTrustStoreId();
 
   void setSecretManagerTrustStoreId(ValueProvider<String> value);
-
-  @Description("Retrieves a fully initialized Kafka config object.")
-  @Default.InstanceFactory(KafkaConfigFactory.class)
-  SASLSSLConfig getSASLSSLConfig();
-
-  void setSASLSSLConfig(SASLSSLConfig value);
-
-  class KafkaConfigFactory implements DefaultValueFactory<SASLSSLConfig> {
-
-    @Override
-    public SASLSSLConfig create(PipelineOptions options) {
-      if (!options.as(KafkaOptions.class).isKafkaSASLSSLEnabled()) {
-        throw new IllegalArgumentException("Set kafka secure access on true.");
-      }
-      var opts = options.as(KafkaSASLSSLOptions.class);
-      return new SASLSSLConfig(
-          opts.getSecretManagerKeyTabId().get(),
-          opts.getSecretManagerTrustStoreId().get(),
-          opts.getKerberosPrincipalName().get(),
-          opts.getConsumerGroupId().get(),
-          opts.getPartitionMaxFetchSize(),
-          opts.isKafkaAutocommitEnabled(),
-          opts.getDefaultApiTimeoutMs(),
-          opts.isKafkaSASLSSLEnabled(),
-          opts.getSecretManagerProjectId().get(),
-          opts.getBootstrapServers().get(),
-          opts.getKeysRootFolder(),
-          opts.getKerberosRealm().get());
-    }
-  }
 }

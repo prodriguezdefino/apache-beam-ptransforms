@@ -15,6 +15,10 @@
  */
 package com.google.cloud.pso.beam.transforms.kafka;
 
+import com.google.cloud.pso.beam.options.KafkaOptions;
+import com.google.cloud.pso.beam.options.KafkaSASLSSLOptions;
+import org.apache.beam.sdk.options.PipelineOptions;
+
 public class SASLSSLConfig extends KafkaConfig {
 
   final String keytabId;
@@ -22,7 +26,6 @@ public class SASLSSLConfig extends KafkaConfig {
   final String kerberosPrincipal;
   final String kerberosRealm;
   final String projectId;
-
 
   public SASLSSLConfig(
       String keytabId,
@@ -63,8 +66,28 @@ public class SASLSSLConfig extends KafkaConfig {
   public String getKerberosPrincipal() {
     return this.kerberosPrincipal;
   }
-  
+
   public String getProjectId() {
     return this.projectId;
+  }
+
+  public static SASLSSLConfig fromOptions(PipelineOptions options) {
+    if (!options.as(KafkaOptions.class).isKafkaSASLSSLEnabled()) {
+      throw new IllegalArgumentException("Set kafka secure access on true.");
+    }
+    var opts = options.as(KafkaSASLSSLOptions.class);
+    return new SASLSSLConfig(
+        opts.getSecretManagerKeyTabId().get(),
+        opts.getSecretManagerTrustStoreId().get(),
+        opts.getKerberosPrincipalName().get(),
+        opts.getConsumerGroupId().get(),
+        opts.getPartitionMaxFetchSize(),
+        opts.isKafkaAutocommitEnabled(),
+        opts.getDefaultApiTimeoutMs(),
+        opts.isKafkaSASLSSLEnabled(),
+        opts.getSecretManagerProjectId().get(),
+        opts.getBootstrapServers().get(),
+        opts.getKeysRootFolder(),
+        opts.getKerberosRealm().get());
   }
 }

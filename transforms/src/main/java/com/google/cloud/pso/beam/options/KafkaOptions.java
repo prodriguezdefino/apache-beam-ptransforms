@@ -70,31 +70,9 @@ public interface KafkaOptions extends PipelineOptions {
 
   void setPartitionMaxFetchSize(Integer value);
 
-  @Description("Retrieves a fully initialized Kafka config object.")
-  @Default.InstanceFactory(KafkaConfigFactory.class)
-  KafkaConfig getKafkaConfig();
-
-  void setKafkaConfig(KafkaConfig value);
-
   @Description("Sets the configuration for each record's timestamp.")
   @Default.Enum("LOG_APPEND_TIME")
   TimestampType getTimestampType();
 
   void setTimestampType(TimestampType value);
-
-  class KafkaConfigFactory implements DefaultValueFactory<KafkaConfig> {
-
-    @Override
-    public KafkaConfig create(PipelineOptions options) {
-      var opts = options.as(KafkaOptions.class);
-      return new KafkaConfig(
-          opts.getConsumerGroupId().get(),
-          opts.getPartitionMaxFetchSize(),
-          opts.isKafkaAutocommitEnabled(),
-          opts.getDefaultApiTimeoutMs(),
-          opts.isKafkaSASLSSLEnabled(),
-          opts.getBootstrapServers().get(),
-          opts.getKeysRootFolder());
-    }
-  }
 }
