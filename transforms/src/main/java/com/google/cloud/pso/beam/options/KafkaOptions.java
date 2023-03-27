@@ -34,58 +34,58 @@ public interface KafkaOptions extends PipelineOptions {
   @Default.Boolean(true)
   Boolean isKafkaSASLSSLEnabled();
 
-  void setKafkaSASLSSLEnabled(Boolean var1);
+  void setKafkaSASLSSLEnabled(Boolean value);
 
   @Description("Sets the Dataflow containers root folder for keys storage.")
   @Default.String("/tmp/lib/keys")
   String getKeysRootFolder();
 
-  void setKeysRootFolder(String var1);
+  void setKeysRootFolder(String value);
 
   @Description("Enables secured access to the Kafka cluster.")
   @Default.Boolean(true)
   Boolean isKafkaAutocommitEnabled();
 
-  void setKafkaAutocommitEnabled(Boolean var1);
+  void setKafkaAutocommitEnabled(Boolean value);
 
   @Description("The consumer group identifier")
   ValueProvider<String> getBootstrapServers();
 
-  void setBootstrapServers(ValueProvider<String> var1);
+  void setBootstrapServers(ValueProvider<String> value);
 
   @Description("The consumer group identifier")
   ValueProvider<String> getConsumerGroupId();
 
-  void setConsumerGroupId(ValueProvider<String> var1);
+  void setConsumerGroupId(ValueProvider<String> value);
 
   @Description("Default API timeout in milliseconds.")
   @Default.Integer(120000)
   Integer getDefaultApiTimeoutMs();
 
-  void setDefaultApiTimeoutMs(Integer var1);
+  void setDefaultApiTimeoutMs(Integer value);
 
   @Description("Default partition max fetch size in bytes.")
   @Default.Integer(0xA00000)
   Integer getPartitionMaxFetchSize();
 
-  void setPartitionMaxFetchSize(Integer var1);
+  void setPartitionMaxFetchSize(Integer value);
 
   @Description("The project where SecretManager is storing the needed materials.")
   ValueProvider<String> getSecretManagerProjectId();
 
-  void setSecretManagerProjectId(ValueProvider<String> var1);
+  void setSecretManagerProjectId(ValueProvider<String> value);
 
   @Description("Retrieves a fully initialized Kafka config object.")
   @Default.InstanceFactory(KafkaConfigFactory.class)
   KafkaConfig getKafkaConfig();
 
-  void setKafkaConfig(KafkaConfig var1);
+  void setKafkaConfig(KafkaConfig value);
 
   @Description("Sets the configuration for each record's timestamp.")
   @Default.Enum("LOG_APPEND_TIME")
   TimestampType getTimestampType();
 
-  void setTimestampType(TimestampType var1);
+  void setTimestampType(TimestampType value);
 
   class KafkaConfigFactory implements DefaultValueFactory<KafkaConfig> {
 

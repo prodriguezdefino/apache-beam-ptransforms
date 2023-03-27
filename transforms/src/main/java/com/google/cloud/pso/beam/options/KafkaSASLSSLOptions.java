@@ -27,36 +27,34 @@ public interface KafkaSASLSSLOptions extends KafkaOptions {
   @Description("The keytab id on SecretManager")
   ValueProvider<String> getSecretManagerKeyTabId();
 
-  void setSecretManagerKeyTabId(ValueProvider<String> var1);
+  void setSecretManagerKeyTabId(ValueProvider<String> value);
 
   @Description("The principal name used for Kerberos auth.")
-  @Default.String("sparrow-ingestion-stg")
-  String getKerberosPrincipalName();
+  ValueProvider<String> getKerberosPrincipalName();
 
-  void setKerberosPrincipalName(String var1);
+  void setKerberosPrincipalName(ValueProvider<String> value);
 
   @Description("The Kerberos realm in use.")
-  @Default.String("TWITTER.BIZ")
-  String getKerberosRealm();
+  ValueProvider<String> getKerberosRealm();
 
-  void setKerberosRealm(String var1);
+  void setKerberosRealm(ValueProvider<String> value);
 
   @Description("Enables Kerberos auth debug.")
   @Default.Boolean(false)
   Boolean isKerberosDebug();
 
-  void setKerberosDebug(Boolean var1);
+  void setKerberosDebug(Boolean value);
 
   @Description("The truststore id on SecretManager")
   ValueProvider<String> getSecretManagerTrustStoreId();
 
-  void setSecretManagerTrustStoreId(ValueProvider<String> var1);
+  void setSecretManagerTrustStoreId(ValueProvider<String> value);
 
   @Description("Retrieves a fully initialized Kafka config object.")
   @Default.InstanceFactory(KafkaConfigFactory.class)
   SASLSSLConfig getSASLSSLConfig();
 
-  void setSASLSSLConfig(SASLSSLConfig var1);
+  void setSASLSSLConfig(SASLSSLConfig value);
 
   class KafkaConfigFactory implements DefaultValueFactory<SASLSSLConfig> {
 
@@ -69,7 +67,7 @@ public interface KafkaSASLSSLOptions extends KafkaOptions {
       return new SASLSSLConfig(
           opts.getSecretManagerKeyTabId().get(),
           opts.getSecretManagerTrustStoreId().get(),
-          opts.getKerberosPrincipalName(),
+          opts.getKerberosPrincipalName().get(),
           opts.getConsumerGroupId().get(),
           opts.getPartitionMaxFetchSize(),
           opts.isKafkaAutocommitEnabled(),
@@ -78,7 +76,7 @@ public interface KafkaSASLSSLOptions extends KafkaOptions {
           opts.getSecretManagerProjectId().get(),
           opts.getBootstrapServers().get(),
           opts.getKeysRootFolder(),
-          opts.getKerberosRealm());
+          opts.getKerberosRealm().get());
     }
   }
 }

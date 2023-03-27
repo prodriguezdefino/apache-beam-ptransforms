@@ -99,7 +99,7 @@ public class ReadStreamingSource extends PTransform<PBegin, PCollection<? extend
               input
                   .apply("ReadFromKafka", createKafkaSource(options))
                   .apply(
-                      "ConvertIntoSparrowTransport",
+                      "ConvertIntoTransport",
                       MapElements.into(TypeDescriptor.of(CommonTransport.class))
                           .via(KafkaTransportUtil.create()))
                   .setCoder(CommonTransportCoder.of());
