@@ -70,11 +70,6 @@ public interface KafkaOptions extends PipelineOptions {
 
   void setPartitionMaxFetchSize(Integer value);
 
-  @Description("The project where SecretManager is storing the needed materials.")
-  ValueProvider<String> getSecretManagerProjectId();
-
-  void setSecretManagerProjectId(ValueProvider<String> value);
-
   @Description("Retrieves a fully initialized Kafka config object.")
   @Default.InstanceFactory(KafkaConfigFactory.class)
   KafkaConfig getKafkaConfig();
@@ -98,7 +93,6 @@ public interface KafkaOptions extends PipelineOptions {
           opts.isKafkaAutocommitEnabled(),
           opts.getDefaultApiTimeoutMs(),
           opts.isKafkaSASLSSLEnabled(),
-          opts.getSecretManagerProjectId().get(),
           opts.getBootstrapServers().get(),
           opts.getKeysRootFolder());
     }

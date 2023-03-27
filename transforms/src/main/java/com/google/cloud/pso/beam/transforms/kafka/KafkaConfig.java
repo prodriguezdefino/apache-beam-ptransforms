@@ -28,7 +28,6 @@ public class KafkaConfig implements Serializable {
   final Boolean autoCommit;
   final Integer defaultAPITimeout;
   final Boolean isSecureAccessEnabled;
-  final String projectId;
   final String bootstrapServers;
   final String keysRootFolder;
 
@@ -38,7 +37,6 @@ public class KafkaConfig implements Serializable {
       Boolean autoCommit,
       Integer defaultAPITimeout,
       Boolean isSecureAccessEnabled,
-      String projectId,
       String bootstrapServers,
       String keysRootFolder) {
     this.groupId = groupId;
@@ -46,7 +44,6 @@ public class KafkaConfig implements Serializable {
     this.autoCommit = autoCommit;
     this.defaultAPITimeout = defaultAPITimeout;
     this.isSecureAccessEnabled = isSecureAccessEnabled;
-    this.projectId = projectId;
     this.bootstrapServers = bootstrapServers;
     this.keysRootFolder = keysRootFolder;
   }
@@ -74,10 +71,6 @@ public class KafkaConfig implements Serializable {
 
   public Boolean getIsSecureAccessEnabled() {
     return this.isSecureAccessEnabled;
-  }
-
-  public String getProjectId() {
-    return this.projectId;
   }
 
   public String getBootstrapServers() {

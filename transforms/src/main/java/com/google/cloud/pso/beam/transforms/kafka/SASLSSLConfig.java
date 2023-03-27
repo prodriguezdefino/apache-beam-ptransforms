@@ -21,6 +21,8 @@ public class SASLSSLConfig extends KafkaConfig {
   final String trutstoreId;
   final String kerberosPrincipal;
   final String kerberosRealm;
+  final String projectId;
+
 
   public SASLSSLConfig(
       String keytabId,
@@ -41,13 +43,13 @@ public class SASLSSLConfig extends KafkaConfig {
         autoCommit,
         defaultAPITimeout,
         isSecureAccessEnabled,
-        projectId,
         bootstrapServers,
         tssMaterialsRootFolder);
     this.keytabId = keytabId;
     this.trutstoreId = trutstoreId;
     this.kerberosPrincipal = kerberosPrincipal;
     this.kerberosRealm = kerberosRealm;
+    this.projectId = projectId;
   }
 
   public String getKeytabId() {
@@ -60,5 +62,9 @@ public class SASLSSLConfig extends KafkaConfig {
 
   public String getKerberosPrincipal() {
     return this.kerberosPrincipal;
+  }
+  
+  public String getProjectId() {
+    return this.projectId;
   }
 }
