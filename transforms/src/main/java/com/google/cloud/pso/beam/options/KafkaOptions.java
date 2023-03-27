@@ -31,7 +31,7 @@ public interface KafkaOptions extends PipelineOptions {
   }
 
   @Description("Enables secured access to the Kafka cluster.")
-  @Default.Boolean(true)
+  @Default.Boolean(false)
   Boolean isKafkaSASLSSLEnabled();
 
   void setKafkaSASLSSLEnabled(Boolean value);
@@ -48,7 +48,7 @@ public interface KafkaOptions extends PipelineOptions {
 
   void setKafkaAutocommitEnabled(Boolean value);
 
-  @Description("The consumer group identifier")
+  @Description("A list of comma separated strings with the form <server>:<port>")
   ValueProvider<String> getBootstrapServers();
 
   void setBootstrapServers(ValueProvider<String> value);
