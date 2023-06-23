@@ -41,7 +41,7 @@ public interface KafkaSASLSSLOptions extends KafkaOptions {
   Boolean isKerberosDebug();
 
   void setKerberosDebug(Boolean value);
-  
+
   @Description("The project where SecretManager is storing the needed materials.")
   ValueProvider<String> getSecretManagerProjectId();
 

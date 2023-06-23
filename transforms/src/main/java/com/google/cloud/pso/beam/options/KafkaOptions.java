@@ -15,9 +15,7 @@
  */
 package com.google.cloud.pso.beam.options;
 
-import com.google.cloud.pso.beam.transforms.kafka.KafkaConfig;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.DefaultValueFactory;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;

@@ -210,7 +210,7 @@ public abstract class TransformTransportToFormat<T>
     public PCollectionTuple expand(PCollection<EventTransport> input) {
       var options = input.getPipeline().getOptions().as(TransportFormatOptions.class);
       return input.apply(
-          "TransformToGenericRecord",
+          "TransformToTableRow",
           ParDo.of(new TransformTransportToTableRow(InputFormatConfiguration.fromOptions(options)))
               .withOutputTags(SUCCESSFULLY_PROCESSED_EVENTS, TupleTagList.of(FAILED_EVENTS)));
     }
