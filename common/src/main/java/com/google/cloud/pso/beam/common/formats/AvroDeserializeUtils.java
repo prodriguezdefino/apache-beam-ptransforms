@@ -345,7 +345,9 @@ public class AvroDeserializeUtils {
 
     private static Object extractJsonPrimitiveValue(FieldValue fieldValue) {
       try {
-        return JSON_VALUE_GETTERS.get(fieldValue.typeName()).extractValue(fieldValue.jsonValue());
+        return JSON_VALUE_GETTERS
+            .get(fieldValue.schema().getType())
+            .extractValue(fieldValue.jsonValue());
       } catch (RuntimeException e) {
         throw new UnsupportedJsonExtractionException(
             "Unable to get value from field '"
