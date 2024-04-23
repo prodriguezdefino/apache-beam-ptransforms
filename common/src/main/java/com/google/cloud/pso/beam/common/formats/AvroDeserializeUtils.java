@@ -31,6 +31,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.stream.Stream;
@@ -211,8 +213,15 @@ public class AvroDeserializeUtils {
       REQUIRE_MISSING,
     }
 
+    public enum MultiArrayBehavior {
+      DO_NOTHING,
+      FAIL,
+      FLATTEN;
+    }
+
     private final Schema schema;
     private NullBehavior nullBehavior = NullBehavior.ACCEPT_MISSING_OR_NULL;
+    private MultiArrayBehavior multiArrayBehavior = MultiArrayBehavior.FAIL;
 
     /** Creates a deserializer for a {@link Row} {@link Schema}. */
     public static GenericRecordJsonDeserializer forSchema(Schema schema) {
@@ -331,6 +340,30 @@ public class AvroDeserializeUtils {
                 + arrayFieldValue.jsonNodeType().name());
       }
 
+      if (arrayFieldValue.isJsonMultiArray()) {
+        switch (this.multiArrayBehavior) {
+          case FAIL:
+            throw new UnsupportedJsonExtractionException(
+                "JSON type for field '"
+                    + arrayFieldValue.name()
+                    + "' is a multi-array, that is not supported on this configuration.");
+          case FLATTEN:
+            return arrayFieldValue
+                .jsonArrayElements()
+                .map(
+                    jsonArrayElement ->
+                        (List<Object>)
+                            extractJsonNodeValue(
+                                FieldValue.of(
+                                    arrayFieldValue.name() + "[][]",
+                                    arrayFieldValue.arrayElementSchema(),
+                                    jsonArrayElement)))
+                .flatMap(List::stream)
+                .collect(ImmutableList.toImmutableList());
+          case DO_NOTHING:
+        }
+      }
+
       return arrayFieldValue
           .jsonArrayElements()
           .map(
@@ -389,6 +422,14 @@ public class AvroDeserializeUtils {
 
       boolean isJsonArray() {
         return jsonValue().isArray();
+      }
+
+      boolean isJsonMultiArray() {
+        return jsonValue().isArray() && checkIfFirstElementIsArray(jsonValue().elements());
+      }
+
+      boolean checkIfFirstElementIsArray(Iterator<JsonNode> elements) {
+        return elements.hasNext() && elements.next().isArray();
       }
 
       Stream<JsonNode> jsonArrayElements() {
