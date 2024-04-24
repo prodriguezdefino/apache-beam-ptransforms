@@ -6,6 +6,8 @@ import com.saasquatch.jsonschemainferrer.AdditionalPropertiesPolicies;
 import com.saasquatch.jsonschemainferrer.JsonSchemaInferrer;
 import com.saasquatch.jsonschemainferrer.RequiredPolicies;
 import com.saasquatch.jsonschemainferrer.SpecVersion;
+import org.apache.avro.generic.GenericRecord;
+import org.junit.Assert;
 import org.junit.Test;
 
 /** */
@@ -23,7 +25,7 @@ public class JsonSchemaTest {
           + "    \"state\": \"CA\",\n"
           + "    \"zipCode\": 12345\n"
           + "  },\n"
-          + "  \"projects\": [         // Array of objects\n"
+          + "  \"projects\": [\n"
           + "    { \"title\": \"Project Alpha\", \"id\": \"PRJ001\" },\n"
           + "    { \"title\": \"Website Redesign\", \"id\": \"PRJ002\" }\n"
           + "  ]\n"
@@ -46,8 +48,12 @@ public class JsonSchemaTest {
   }
 
   @Test
-  public void testAvroSchema() {
+  public void testAvroSchema() throws JsonProcessingException {
     var schema = JsonSchema.avroSchemaFromJsonSchema(JSON_SCHEMA);
-    System.out.println(schema.toString());
+    var objectMapper =
+        JsonToAvro.newObjectMapperWith(JsonToAvro.GenericRecordJsonDeserializer.forSchema(schema));
+    var record = objectMapper.readValue(JSON_OBJECT, GenericRecord.class);
+    Assert.assertEquals("John Doe", record.get("name"));
+    Assert.assertEquals(30L, record.get("age"));
   }
 }

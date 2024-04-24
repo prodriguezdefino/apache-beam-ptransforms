@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.pso.beam.common.formats;
+package com.google.cloud.pso.beam.common.formats.json;
 
 import static com.google.cloud.pso.beam.common.formats.json.JsonValueExtractors.*;
 
@@ -46,7 +46,7 @@ import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.beam.sdk.values.Row;
 
 /** */
-public class AvroDeserializeUtils {
+public class JsonToAvro {
 
   private static final ImmutableMap<Schema.Type, ValueExtractor<?>> JSON_VALUE_GETTERS =
       ImmutableMap.<Schema.Type, ValueExtractor<?>>builder()
@@ -148,15 +148,14 @@ public class AvroDeserializeUtils {
 
   private static ImmutableList<UnsupportedField> findUnsupportedFields(
       Schema schema, String fieldName) {
-    if (schema.hasFields()) {
+    if (Schema.Type.RECORD.equals(schema.getType()) && schema.hasFields()) {
       return schema.getFields().stream()
           .flatMap(
               (field) ->
                   findUnsupportedFields(field.schema(), fieldName + "." + field.name()).stream())
           .collect(ImmutableList.toImmutableList());
     }
-
-    if (schema.getElementType() != null) {
+    if (Schema.Type.ARRAY.equals(schema.getType()) && schema.getElementType() != null) {
       return findUnsupportedFields(schema.getElementType(), fieldName + "[]");
     }
 
@@ -462,7 +461,7 @@ public class AvroDeserializeUtils {
       }
 
       static FieldValue of(String name, Schema schema, JsonNode jsonValue) {
-        return new AutoValue_AvroDeserializeUtils_GenericRecordJsonDeserializer_FieldValue(
+        return new AutoValue_JsonToAvro_GenericRecordJsonDeserializer_FieldValue(
             name, schema, jsonValue);
       }
     }

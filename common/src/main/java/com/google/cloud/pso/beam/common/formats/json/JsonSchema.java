@@ -86,7 +86,8 @@ public class JsonSchema {
       }
       var baseArray = recordFieldsAssembler.name(propertyName).type().array();
       var elementSchema =
-          avroSchemaFromJsonSchemaType(arraySchema.getAllItemSchema(), propertyName, isNullable);
+          avroSchemaFromJsonSchemaType(
+              arraySchema.getAllItemSchema(), propertyName + ".elements", isNullable);
       var arrayDefault =
           isNullable
               ? baseArray.items().nullable().type(elementSchema)
