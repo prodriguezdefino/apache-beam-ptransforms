@@ -20,6 +20,7 @@ import static com.google.cloud.pso.beam.common.formats.ThriftUtils.*;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.pso.beam.common.formats.InputFormatConfiguration;
+import com.google.cloud.pso.beam.common.formats.JsonTransportHandler;
 import com.google.cloud.pso.beam.common.formats.JsonUtils;
 import com.google.cloud.pso.beam.common.formats.options.TransportFormatOptions;
 import com.google.cloud.pso.beam.common.transport.CommonErrorTransport;
@@ -256,11 +257,13 @@ public abstract class TransformTransportToFormat<T>
       org.apache.avro.Schema avroSchema) {
 
     return switch (config.format()) {
-      case JSON -> BigQueryUtils.toBeamRow(
-          beamSchema, (TableRow) config.handler().decode(transport.getData()));
-      default -> AvroUtils.toBeamRowStrict(
-          retrieveGenericRecordFromTransport(transport, config, beamSchema, avroSchema),
-          beamSchema);
+      case JSON ->
+          BigQueryUtils.toBeamRow(
+              beamSchema, (TableRow) config.handler().decode(transport.getData()));
+      default ->
+          AvroUtils.toBeamRowStrict(
+              retrieveGenericRecordFromTransport(transport, config, beamSchema, avroSchema),
+              beamSchema);
     };
   }
 
@@ -271,18 +274,15 @@ public abstract class TransformTransportToFormat<T>
       org.apache.avro.Schema avroSchema) {
     try {
       return switch (config.format()) {
-        case AVRO -> {
-          yield (GenericRecord) config.handler().decode(transport.getData());
-        }
-        case THRIFT -> {
-          var thriftObject = (TBase<?, ?>) config.handler().decode(transport.getData());
-          yield retrieveGenericRecordFromThriftData(thriftObject, avroSchema);
-        }
-        case JSON -> {
-          var tableRow = (TableRow) config.handler().decode(transport.getData());
-          var beamRow = BigQueryUtils.toBeamRow(beamSchema, tableRow);
-          yield AvroUtils.toGenericRecord(beamRow);
-        }
+        case AVRO -> (GenericRecord) config.handler().decode(transport.getData());
+        case THRIFT ->
+            retrieveGenericRecordFromThriftData(
+                (TBase<?, ?>) config.handler().decode(transport.getData()), avroSchema);
+        case JSON ->
+            AvroUtils.toGenericRecord(
+                BigQueryUtils.toBeamRow(
+                    beamSchema,
+                    ((JsonTransportHandler) config.handler()).decodeTableRow(transport.getData())));
         default -> throw new RuntimeException("Format not implemented " + config.format());
       };
     } catch (Exception ex) {
@@ -292,29 +292,23 @@ public abstract class TransformTransportToFormat<T>
     }
   }
 
+  @SuppressWarnings("deprecation")
   static TableRow retrieveTableRowFromTransport(
       EventTransport transport,
       InputFormatConfiguration.FormatConfiguration config,
       org.apache.avro.Schema avroSchema) {
     try {
       return switch (config.format()) {
-        case AVRO -> {
-          var genericRecord = (GenericRecord) config.handler().decode(transport.getData());
-          yield BigQueryUtils.convertGenericRecordToTableRow(
-              genericRecord, BigQueryUtils.toTableSchema(AvroUtils.toBeamSchema(avroSchema)));
-        }
-        case THRIFT -> {
-          var thriftObject = (TBase<?, ?>) config.handler().decode(transport.getData());
-          var genericRecord = retrieveGenericRecordFromThriftData(thriftObject, avroSchema);
-          yield BigQueryUtils.convertGenericRecordToTableRow(
-              genericRecord, BigQueryUtils.toTableSchema(AvroUtils.toBeamSchema(avroSchema)));
-        }
-        case JSON -> {
-          var bais = new ByteArrayInputStream(transport.getData());
-          @SuppressWarnings("deprecation")
-          var tableRow = TableRowJsonCoder.of().decode(bais, Coder.Context.OUTER);
-          yield tableRow;
-        }
+        case AVRO ->
+            BigQueryUtils.convertGenericRecordToTableRow(
+                (GenericRecord) config.handler().decode(transport.getData()));
+        case THRIFT ->
+            BigQueryUtils.convertGenericRecordToTableRow(
+                retrieveGenericRecordFromThriftData(
+                    (TBase<?, ?>) config.handler().decode(transport.getData()), avroSchema));
+        case JSON ->
+            TableRowJsonCoder.of()
+                .decode(new ByteArrayInputStream(transport.getData()), Coder.Context.OUTER);
         default -> throw new RuntimeException("Format not implemented " + config.format());
       };
     } catch (Exception ex) {
@@ -327,13 +321,16 @@ public abstract class TransformTransportToFormat<T>
   public static Schema retrieveRowSchema(TransportFormatOptions options) {
     return switch (options.getTransportFormat()) {
       case THRIFT -> retrieveRowSchema(options.getThriftClassName());
-      case AVRO -> AvroUtils.toBeamSchema(
-          retrieveAvroSchemaFromLocation(options.getSchemaFileLocation()));
-      case JSON -> AvroUtils.toBeamSchema(
-          JsonUtils.jsonSchemaToAvroSchema(
-              JsonUtils.retrieveJsonSchemaFromLocation(options.getSchemaFileLocation())));
-      default -> throw new IllegalArgumentException(
-          "Event format has not being implemented for ingestion: " + options.getTransportFormat());
+      case AVRO ->
+          AvroUtils.toBeamSchema(retrieveAvroSchemaFromLocation(options.getSchemaFileLocation()));
+      case JSON ->
+          AvroUtils.toBeamSchema(
+              JsonUtils.jsonSchemaToAvroSchema(
+                  JsonUtils.retrieveJsonSchemaFromLocation(options.getSchemaFileLocation())));
+      default ->
+          throw new IllegalArgumentException(
+              "Event format has not being implemented for ingestion: "
+                  + options.getTransportFormat());
     };
   }
 
@@ -341,10 +338,13 @@ public abstract class TransformTransportToFormat<T>
     return switch (options.getTransportFormat()) {
       case THRIFT -> retrieveAvroSchemaFromThriftClassName(options.getThriftClassName());
       case AVRO -> retrieveAvroSchemaFromLocation(options.getSchemaFileLocation());
-      case JSON -> JsonUtils.jsonSchemaToAvroSchema(
-          JsonUtils.retrieveJsonSchemaFromLocation(options.getSchemaFileLocation()));
-      default -> throw new IllegalArgumentException(
-          "Event format has not being implemented for ingestion: " + options.getTransportFormat());
+      case JSON ->
+          JsonUtils.jsonSchemaToAvroSchema(
+              JsonUtils.retrieveJsonSchemaFromLocation(options.getSchemaFileLocation()));
+      default ->
+          throw new IllegalArgumentException(
+              "Event format has not being implemented for ingestion: "
+                  + options.getTransportFormat());
     };
   }
 

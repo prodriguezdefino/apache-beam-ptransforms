@@ -16,6 +16,7 @@
 package com.google.cloud.pso.beam.common.formats;
 
 import autovalue.shaded.com.google.common.base.Preconditions;
+import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.channels.Channels;
@@ -149,19 +150,23 @@ public class JsonUtils {
         .compareTo(BigDecimal.valueOf(maxValue.doubleValue()));
   }
 
+  static InputStream openSchemaResource(String jsonSchemaLocation) throws IOException {
+    if (jsonSchemaLocation.startsWith("classpath://")) {
+      return JsonUtils.class.getResourceAsStream(jsonSchemaLocation.replace("classpath://", "/"));
+    } else {
+      return Channels.newInputStream(
+          FileSystems.open(FileSystems.matchNewResource(jsonSchemaLocation, false)));
+    }
+  }
+
   public static Schema retrieveJsonSchemaFromLocation(String jsonSchemaLocation) {
-    try {
-      if (jsonSchemaLocation.startsWith("classpath://")) {
-        try (InputStream inputStream =
-            JsonUtils.class.getResourceAsStream(jsonSchemaLocation.replace("classpath://", "/"))) {
-          return SchemaLoader.load(new JSONObject(new JSONTokener(inputStream)));
-        }
-      } else
-        try (InputStream inputStream =
-            Channels.newInputStream(
-                FileSystems.open(FileSystems.matchNewResource(jsonSchemaLocation, false)))) {
-          return SchemaLoader.load(new JSONObject(new JSONTokener(inputStream)));
-        }
+    try (var inputStream = openSchemaResource(jsonSchemaLocation)) {
+      return new SchemaLoader(
+              new SchemaLoader.SchemaLoaderBuilder()
+                  .useDefaults(true)
+                  .schemaJson(new JSONObject(new JSONTokener(inputStream))))
+          .load()
+          .build();
     } catch (Exception ex) {
       var msg =
           "Error while trying to retrieve the json schema from location " + jsonSchemaLocation;

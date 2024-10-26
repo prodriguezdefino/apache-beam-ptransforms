@@ -15,6 +15,7 @@
  */
 package com.google.cloud.pso.beam.initializers;
 
+import autovalue.shaded.com.google.auto.service.AutoService;
 import com.google.cloud.pso.beam.options.KafkaOptions;
 import com.google.cloud.pso.beam.options.KafkaSASLSSLOptions;
 import com.google.cloud.pso.beam.transforms.kafka.KafkaAuth;
@@ -23,6 +24,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@AutoService(JvmInitializer.class)
 public class JVMInitializer implements JvmInitializer {
 
   private static final Logger LOG = LoggerFactory.getLogger(JVMInitializer.class);

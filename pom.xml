@@ -15,8 +15,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <java.version>17</java.version>
-        <beam.version>2.52.0</beam.version>
+        <java.version>21</java.version>
+        <beam.version>2.60.0</beam.version>
         <!-- tool versions -->
         <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
         <maven-exec-plugin.version>1.6.0</maven-exec-plugin.version>
@@ -35,7 +35,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-      
+
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
@@ -65,7 +65,7 @@
                 <groupId>com.esotericsoftware</groupId>
                 <artifactId>kryo</artifactId>
                 <version>5.4.0</version>
-            </dependency>    
+            </dependency>
             <dependency>
                 <groupId>com.github.erosb</groupId>
                 <artifactId>everit-json-schema</artifactId>
@@ -90,10 +90,15 @@
                 </exclusions>
             </dependency>
             <dependency>
+                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-yaml</artifactId>
+                <version>2.14.3</version>
+            </dependency>
+            <dependency>
                 <groupId>org.apache.avro</groupId>
                 <artifactId>avro-thrift</artifactId>
                 <version>1.11.1</version>
-            </dependency>    
+            </dependency>
             <dependency>
                 <groupId>com.google.cloud.pso.beam</groupId>
                 <artifactId>udf</artifactId>
@@ -139,8 +144,8 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-  
-    <build>    
+
+    <build>
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -173,7 +178,7 @@
                         <threadCount>4</threadCount>
                         <redirectTestOutputToFile>true</redirectTestOutputToFile>
                         <systemProperties>
-                            <property> 
+                            <property>
                                 <name>java.util.logging.config.file</name>
                                 <value>src/test/resources/logging.properties</value>
                             </property>
@@ -225,11 +230,11 @@
                                 <include>src/main/java/**/*.java</include>
                                 <include>src/test/java/**/*.java</include>
                             </includes>
-                            <cleanthat />        
-                            <googleJavaFormat /> 
-                            <importOrder /> 
-                            <removeUnusedImports /> 
-                            <formatAnnotations />  
+                            <cleanthat />
+                            <googleJavaFormat />
+                            <importOrder />
+                            <removeUnusedImports />
+                            <formatAnnotations />
                             <licenseHeader>
                                 <file>${maven.multiModuleProjectDirectory}/license-header</file>
                             </licenseHeader>
@@ -239,7 +244,7 @@
             </plugins>
         </pluginManagement>
     </build>
-  
+
     <repositories>
         <repository>
             <id>confluent</id>

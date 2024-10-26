@@ -40,8 +40,8 @@ import org.joda.time.format.PeriodFormatterBuilder;
 /** A collection of static methods for Date manipulation. */
 public class Utilities {
 
-  private static final String OUTPUT_PATH_MINUTE_WINDOW = "YYYY/MM/DD/HH/mm/";
-  private static final String OUTPUT_PATH_HOURLY_WINDOW = "YYYY/MM/DD/HH/";
+  private static final String OUTPUT_PATH_MINUTE_WINDOW = "year=YYYY/month=MM/day=DD/hour=HH/minute=mm/";
+  private static final String OUTPUT_PATH_HOURLY_WINDOW = "year=YYYY/month=MM/day=DD/hour=HH/";
   private static final String OUTPUT_PATH_FLAT_WINDOW_MINUTE = "YYYYMMddHHmm";
   private static final String OUTPUT_PATH_FLAT_WINDOW_HOUR = "YYYYMMddHH";
   private static final DateTimeFormatter OUTPUT_HOURLY_WINDOW_FILENAME_COMPONENT =

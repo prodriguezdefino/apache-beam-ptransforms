@@ -40,8 +40,8 @@ public interface KafkaOptions extends PipelineOptions {
 
   void setKeysRootFolder(String value);
 
-  @Description("Enables secured access to the Kafka cluster.")
-  @Default.Boolean(true)
+  @Description("Enables offset auto-commit.")
+  @Default.Boolean(false)
   Boolean isKafkaAutocommitEnabled();
 
   void setKafkaAutocommitEnabled(Boolean value);

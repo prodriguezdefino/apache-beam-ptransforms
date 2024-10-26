@@ -21,11 +21,13 @@ import com.google.cloud.pso.beam.common.transport.coder.CommonTransportCoder;
 import com.google.cloud.pso.beam.options.KafkaOptions;
 import com.google.cloud.pso.beam.options.StreamingSourceOptions;
 import com.google.cloud.pso.beam.transforms.kafka.ConsumerFactoryFn;
+import com.google.cloud.pso.beam.transforms.kafka.KafkaConfig;
 import com.google.cloud.pso.beam.transforms.transport.KafkaTransportUtil;
 import com.google.cloud.pso.beam.transforms.transport.PubSubLiteTransportUtil;
 import com.google.cloud.pso.beam.transforms.transport.PubSubTransport;
 import com.google.cloud.pso.beam.transforms.transport.coder.PubSubTransportCoder;
 import com.google.cloud.pubsublite.SubscriptionPath;
+import java.util.Map;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsublite.PubsubLiteIO;
 import org.apache.beam.sdk.io.gcp.pubsublite.SubscriberOptions;
@@ -58,65 +60,50 @@ public class ReadStreamingSource extends PTransform<PBegin, PCollection<? extend
   public PCollection<? extends EventTransport> expand(PBegin input) {
     StreamingSourceOptions options =
         input.getPipeline().getOptions().as(StreamingSourceOptions.class);
-    PCollection<? extends EventTransport> msgs = null;
-    switch (options.getSourceType()) {
-      case PUBSUBLITE:
-        {
-          var subscriptionPath = SubscriptionPath.parse(options.getSubscription().get());
-          msgs =
-              input
-                  .apply(
-                      "ReadFromPubSubLite",
-                      PubsubLiteIO.read(
-                          SubscriberOptions.newBuilder()
-                              .setSubscriptionPath(subscriptionPath)
-                              .build()))
-                  .apply(
-                      "ConvertIntoPubsubMessages",
-                      MapElements.into(TypeDescriptor.of(CommonTransport.class))
-                          .via(PubSubLiteTransportUtil.create()))
-                  .setCoder(CommonTransportCoder.of());
-          break;
-        }
-      case PUBSUB:
-        {
-          msgs =
-              input
-                  .apply(
-                      "ReadFromPubSub",
-                      PubsubIO.readMessagesWithAttributesAndMessageId()
-                          .fromSubscription(options.getSubscription()))
-                  .apply(
-                      "ConvertIntoTransport",
-                      MapElements.into(TypeDescriptor.of(PubSubTransport.class))
-                          .via(PubSubTransport.create()))
-                  .setCoder(PubSubTransportCoder.of());
-          break;
-        }
-      case KAFKA:
-        {
-          msgs =
-              input
-                  .apply("ReadFromKafka", createKafkaSource(options))
-                  .apply(
-                      "ConvertIntoTransport",
-                      MapElements.into(TypeDescriptor.of(CommonTransport.class))
-                          .via(KafkaTransportUtil.create()))
-                  .setCoder(CommonTransportCoder.of());
-          break;
-        }
-      default:
-        {
+    return switch (options.getSourceType()) {
+      case PUBSUBLITE ->
+          input
+              .apply(
+                  "ReadFromPubSubLite",
+                  PubsubLiteIO.read(
+                      SubscriberOptions.newBuilder()
+                          .setSubscriptionPath(
+                              SubscriptionPath.parse(options.getSubscription().get()))
+                          .build()))
+              .apply(
+                  "ConvertIntoPubsubMessages",
+                  MapElements.into(TypeDescriptor.of(CommonTransport.class))
+                      .via(PubSubLiteTransportUtil.create()))
+              .setCoder(CommonTransportCoder.of());
+      case PUBSUB ->
+          input
+              .apply(
+                  "ReadFromPubSub",
+                  PubsubIO.readMessagesWithAttributesAndMessageId()
+                      .fromSubscription(options.getSubscription()))
+              .apply(
+                  "ConvertIntoTransport",
+                  MapElements.into(TypeDescriptor.of(PubSubTransport.class))
+                      .via(PubSubTransport.create()))
+              .setCoder(PubSubTransportCoder.of());
+      case KAFKA ->
+          input
+              .apply("ReadFromKafka", createKafkaSource(options))
+              .apply(
+                  "ConvertIntoTransport",
+                  MapElements.into(TypeDescriptor.of(CommonTransport.class))
+                      .via(KafkaTransportUtil.create()))
+              .setCoder(CommonTransportCoder.of());
+      default ->
           throw new IllegalArgumentException(
               "Source type " + options.getSourceType() + " not supported.");
-        }
-    }
-    return msgs;
+    };
   }
 
   KafkaIO.Read<byte[], byte[]> createKafkaSource(PipelineOptions options) {
     var sourceTopic = options.as(StreamingSourceOptions.class).getInputTopic().get();
     var kafkaOptions = options.as(KafkaOptions.class);
+    var kafkaConfig = KafkaConfig.fromOptions(options);
 
     KafkaIO.Read<byte[], byte[]> source =
         KafkaIO.readBytes()
@@ -125,19 +112,28 @@ public class ReadStreamingSource extends PTransform<PBegin, PCollection<? extend
             .withTopic(sourceTopic)
             .withKeyDeserializer(ByteArrayDeserializer.class)
             .withValueDeserializer(ByteArrayDeserializer.class)
+            .withConsumerConfigUpdates(
+                Map.of(
+                    "group.id",
+                    kafkaConfig.getGroupId(),
+                    "bootstrap.servers",
+                    kafkaConfig.getBootstrapServers(),
+                    "max.partition.fetch.bytes",
+                    kafkaConfig.getPartitionMaxFetchSize(),
+                    "enable.auto.commit",
+                    kafkaConfig.getAutoCommit(),
+                    "default.api.timeout.ms",
+                    kafkaConfig.getDefaultAPITimeout()))
             .withConsumerFactoryFn(new ConsumerFactoryFn(kafkaOptions));
 
-    switch (kafkaOptions.getTimestampType()) {
-      case CREATE_TIME:
-        source = source.withCreateTime(Duration.standardHours(2));
-        break;
-      case LOG_APPEND_TIME:
-        source = source.withLogAppendTime();
-        break;
-      default:
-        break;
+    if (!kafkaOptions.isKafkaAutocommitEnabled()) {
+      source = source.commitOffsetsInFinalize();
     }
 
-    return source;
+    return switch (kafkaOptions.getTimestampType()) {
+      case CREATE_TIME -> source.withCreateTime(Duration.standardHours(2));
+      case LOG_APPEND_TIME -> source.withLogAppendTime();
+      default -> source;
+    };
   }
 }

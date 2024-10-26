@@ -86,7 +86,19 @@ public class WriteStreamingSink extends PTransform<PCollection<EventTransport>, 
                       .withBootstrapServers(bootstrapServers)
                       .withKeySerializer(ByteArraySerializer.class)
                       .withValueSerializer(ByteArraySerializer.class)
-                      .withProducerConfigUpdates(ImmutableMap.of("max.request.size", "6291456")));
+                      .withProducerConfigUpdates(
+                          ImmutableMap.of(
+                              "max.request.size",
+                              "6291456",
+                              // needed to connecto to GCP Managed Kafka
+                              "security.protocol",
+                              "SASL_SSL",
+                              "sasl.mechanism",
+                              "OAUTHBEARER",
+                              "sasl.login.callback.handler.class",
+                              "com.google.cloud.hosted.kafka.auth.GcpLoginCallbackHandler",
+                              "sasl.jaas.config",
+                              "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;")));
           break;
         }
       case PUBSUB:
