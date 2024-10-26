@@ -48,11 +48,15 @@ public class ConsumerFactoryFn
   }
 
   Map<String, Object> populateCommonOptions(Map<String, Object> config) {
-    config.put("group.id", this.kafkaConfig.groupId);
-    config.put("bootstrap.servers", this.kafkaConfig.bootstrapServers);
-    config.put("max.partition.fetch.bytes", this.kafkaConfig.partitionMaxFetchSize);
-    config.put("enable.auto.commit", this.kafkaConfig.autoCommit);
-    config.put("default.api.timeout.ms", this.kafkaConfig.defaultAPITimeout);
+    config.put("security.protocol", "SASL_SSL");
+    config.put("sasl.mechanism", "OAUTHBEARER");
+    config.put(
+        "sasl.login.callback.handler.class",
+        "com.google.cloud.hosted.kafka.auth.GcpLoginCallbackHandler");
+    config.put(
+        "sasl.jaas.config",
+        "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;");
+
     return config;
   }
 }
